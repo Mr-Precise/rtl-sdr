@@ -414,7 +414,7 @@ static int r82xx_set_mux(struct r82xx_priv *priv, uint32_t freq)
 	return rc;
 }
 
-static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
+static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used)
 {
 	int rc, i;
 	unsigned sleep_time = 10000;
@@ -505,13 +505,12 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	nint = (uint32_t) (vco_div / 65536);
 	sdm = (uint32_t) (vco_div % 65536);
 
-#if 0
-	{
+	if (freq_used) {
 	  uint64_t actual_vco = (uint64_t)2 * pll_ref * nint + (uint64_t)2 * pll_ref * sdm / 65536;
 	  fprintf(stderr, "[R82XX] requested %uHz; selected mix_div=%u vco_freq=%lu nint=%u sdm=%u; actual_vco=%lu; tuning error=%+dHz\n",
 		  freq, mix_div, vco_freq, nint, sdm, actual_vco, (int32_t) (actual_vco - vco_freq) / mix_div);
+	  *freq_used = (uint32_t) (actual_vco / mix_div);
 	}
-#endif
 
 	if (nint > ((128 / vco_power_ref) - 1)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
@@ -900,7 +899,7 @@ static int r82xx_set_tv_standard(struct r82xx_priv *priv,
 			if (rc < 0)
 				return rc;
 
-			rc = r82xx_set_pll(priv, filt_cal_lo * 1000);
+			rc = r82xx_set_pll(priv, filt_cal_lo * 1000, NULL);
 			if (rc < 0 || !priv->has_lock)
 				return rc;
 
@@ -1087,17 +1086,19 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 	return 0;
 }
 
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used)
 {
 	int rc = -1;
 	uint32_t lo_freq = freq + priv->int_freq;
 	uint8_t air_cable1_in;
+	uint32_t lo_freq_used;
 
 	rc = r82xx_set_mux(priv, lo_freq);
 	if (rc < 0)
 		goto err;
 
-	rc = r82xx_set_pll(priv, lo_freq);
+	rc = r82xx_set_pll(priv, lo_freq, &lo_freq_used);
+	if (freq_used) *freq_used = lo_freq_used - priv->int_freq;
 	if (rc < 0 || !priv->has_lock)
 		goto err;
 

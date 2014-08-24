@@ -113,7 +113,7 @@ enum r82xx_delivery_system {
 
 int r82xx_standby(struct r82xx_priv *priv);
 int r82xx_init(struct r82xx_priv *priv);
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq);
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used);
 int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain);
 
 #endif
