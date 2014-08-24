@@ -451,7 +451,7 @@ static int r82xx_set_mux(struct r82xx_priv *priv, uint32_t freq)
 	return rc;
 }
 
-static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
+static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_out)
 {
 	int rc, i;
 	unsigned sleep_time = 10000;
@@ -553,6 +553,11 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	ni = (nint - 13) / 4;
 	si = nint - 4 * ni - 13;
 
+	if (freq_out) {
+		uint64_t actual_vco = (uint64_t)2 * pll_ref * nint + (uint64_t)2 * pll_ref * sdm / 65536;
+		*freq_out = (uint32_t) ((actual_vco + mix_div/2) / mix_div);
+	}
+
 	rc = r82xx_write_reg(priv, 0x14, ni + (si << 6));
 	if (rc < 0)
 		return rc;
@@ -569,8 +574,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq)
 	rc = r82xx_write_reg_mask(priv, 0x12, val, 0x18);
 	if (rc < 0)
 		return rc;
-
-	//fprintf(stderr, "LO: %u kHz, MixDiv: %u, PLLDiv: %u, VCO %u kHz, SDM: %u \n", (uint32_t)(freq/1000), mix_div, nint,  (uint32_t)(vco_freq/1000), sdm);
 
 	rc = r82xx_write_reg(priv, 0x16, sdm >> 8);
 	if (rc < 0)
@@ -1070,10 +1073,14 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 	return 0;
 }
 
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out)
 {
+	/* nb: this path is only used for regular (heterodyned) tuning, so we can safely pick an IF ourselves.
+	 * we'll still get a callback telling us the exact desired IF, which will generally be very close to the one we picked.
+	 */
+
 	int rc = -1;
-	uint32_t lo_freq = freq + priv->int_freq;
+	uint32_t lo_freq = freq + R82XX_DEFAULT_IF_FREQ;
 	uint8_t air_cable1_in;
 
 	r82xx_write_batch_init(priv);
@@ -1082,7 +1089,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq)
 	if (rc < 0)
 		goto err;
 
-	rc = r82xx_set_pll(priv, lo_freq);
+	rc = r82xx_set_pll(priv, lo_freq, lo_freq_out);
 	if (rc < 0)
 		goto err;
 
@@ -1123,7 +1130,7 @@ int r82xx_set_nomod(struct r82xx_priv *priv)
 	if (rc < 0)
 		goto err;
 
-	r82xx_set_pll(priv, 25000000);
+	r82xx_set_pll(priv, 25000000, NULL);
 
 err:
 	if (rc < 0)
