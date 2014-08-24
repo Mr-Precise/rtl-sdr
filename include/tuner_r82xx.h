@@ -32,8 +32,6 @@
 #define R82XX_CHECK_ADDR	0x00
 #define R82XX_CHECK_VAL		0x69
 
-#define R82XX_IF_FREQ		3570000
-
 #define REG_SHADOW_START	5
 #define NUM_REGS		30
 #define NUM_IMR			5
@@ -113,7 +111,7 @@ enum r82xx_delivery_system {
 
 int r82xx_standby(struct r82xx_priv *priv);
 int r82xx_init(struct r82xx_priv *priv);
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used);
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out /* set to actual LO frequency used, including IF offset */ );
 int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain);
 
 #endif

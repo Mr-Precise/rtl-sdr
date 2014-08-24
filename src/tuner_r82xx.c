@@ -414,7 +414,7 @@ static int r82xx_set_mux(struct r82xx_priv *priv, uint32_t freq)
 	return rc;
 }
 
-static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used)
+static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_out)
 {
 	int rc, i;
 	unsigned sleep_time = 10000;
@@ -505,13 +505,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	nint = (uint32_t) (vco_div / 65536);
 	sdm = (uint32_t) (vco_div % 65536);
 
-	if (freq_used) {
-	  uint64_t actual_vco = (uint64_t)2 * pll_ref * nint + (uint64_t)2 * pll_ref * sdm / 65536;
-	  fprintf(stderr, "[R82XX] requested %uHz; selected mix_div=%u vco_freq=%lu nint=%u sdm=%u; actual_vco=%lu; tuning error=%+dHz\n",
-		  freq, mix_div, vco_freq, nint, sdm, actual_vco, (int32_t) (actual_vco - vco_freq) / mix_div);
-	  *freq_used = (uint32_t) (actual_vco / mix_div);
-	}
-
 	if (nint > ((128 / vco_power_ref) - 1)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
 		return -1;
@@ -519,6 +512,11 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 
 	ni = (nint - 13) / 4;
 	si = nint - 4 * ni - 13;
+
+	if (freq_out) {
+		uint64_t actual_vco = (uint64_t)2 * pll_ref * nint + (uint64_t)2 * pll_ref * sdm / 65536;
+		*freq_out = (uint32_t) ((actual_vco + mix_div/2) / mix_div);
+	}
 
 	rc = r82xx_write_reg(priv, 0x14, ni + (si << 6));
 	if (rc < 0)
@@ -1086,19 +1084,17 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 	return 0;
 }
 
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_used)
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out)
 {
 	int rc = -1;
 	uint32_t lo_freq = freq + priv->int_freq;
 	uint8_t air_cable1_in;
-	uint32_t lo_freq_used;
 
 	rc = r82xx_set_mux(priv, lo_freq);
 	if (rc < 0)
 		goto err;
 
-	rc = r82xx_set_pll(priv, lo_freq, &lo_freq_used);
-	if (freq_used) *freq_used = lo_freq_used - priv->int_freq;
+	rc = r82xx_set_pll(priv, lo_freq, lo_freq_out);
 	if (rc < 0 || !priv->has_lock)
 		goto err;
 
