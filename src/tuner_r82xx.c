@@ -469,6 +469,9 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	uint8_t ni, si, nint, vco_fine_tune, val;
 	uint8_t data[5];
 
+	if (freq < 27.7e6)
+		freq = 27.7e6;
+
 	r82xx_write_batch_init(priv);
 
 	/* Frequency in kHz */
@@ -905,10 +908,14 @@ static int r82xx_init_tv_standard(struct r82xx_priv *priv,
 	return 0;
 }
 
-static int r82xx_set_if_filter(struct r82xx_priv *priv, int hpf, int lpf) {
-	int rc, i;
+static int update_if_filter(struct r82xx_priv *priv) {
+	int rc, i, hpf, lpf;
 	uint8_t filt_q, hp_cor;
 	int cal;
+
+	hpf = ((int)priv->if_filter_freq - (int)priv->bw/2)/1000;
+	lpf = ((int)priv->if_filter_freq + (int)priv->bw/2)/1000;
+
 	filt_q = 0x10;		/* r10[4]:low q(1'b1) */
 
 	if(lpf <= 2500) {
@@ -964,14 +971,19 @@ static int r82xx_set_if_filter(struct r82xx_priv *priv, int hpf, int lpf) {
 	return 0;
 }
 
-int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw) {
-	priv->bw = bw;
-	return r82xx_set_if_filter(priv, ((int)priv->int_freq - (int)bw/2)/1000, ((int)priv->int_freq + (int)bw/2)/1000);
-}
-
 int r82xx_set_if_freq(struct r82xx_priv *priv, uint32_t freq) {
 	priv->int_freq = freq;
-	return r82xx_set_if_filter(priv, ((int)freq - (int)priv->bw/2)/1000, ((int)freq + (int)priv->bw/2)/1000);
+	return 0;
+}
+
+int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw) {
+	priv->bw = bw;
+	return update_if_filter(priv);
+}
+
+int r82xx_set_if_filter(struct r82xx_priv *priv, uint32_t freq) {
+	priv->if_filter_freq = freq;
+	return update_if_filter(priv);
 }
 
 static int r82xx_read_gain(struct r82xx_priv *priv)

@@ -93,6 +93,7 @@ struct r82xx_priv {
 	enum r82xx_tuner_type		type;
 
 	uint32_t			bw;	/* in MHz */
+	uint32_t			if_filter_freq;	/* in Hz */
 
 	void *rtl_dev;
 };
@@ -121,6 +122,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain);
 int r82xx_set_nomod(struct r82xx_priv *priv);
 int r82xx_set_dither(struct r82xx_priv *priv, int dither);
 int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw);
-int r82xx_set_if_freq(struct r82xx_priv *priv, uint32_t freq);
+int r82xx_set_if_freq(struct r82xx_priv *priv, uint32_t freq);   /* preferred IF offset */
+int r82xx_set_if_filter(struct r82xx_priv *priv, uint32_t freq); /* center frequency of IF filter */
 
 #endif
