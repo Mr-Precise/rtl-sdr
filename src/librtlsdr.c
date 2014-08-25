@@ -952,7 +952,7 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 
 		if (!r) {
 			uint32_t tuner_if = abs(tuner_lo - freq), actual_if = tuner_if;
-			r |= rtlsdr_set_if_freq(dev, tuner_if, &actual_if);
+			r |= rtl2832_set_if_freq(dev, tuner_if, &actual_if);
 			effective_freq = tuner_lo - actual_if;
 		}
 	}
