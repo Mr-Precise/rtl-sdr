@@ -695,7 +695,7 @@ int rtlsdr_deinit_baseband(rtlsdr_dev_t *dev)
 	return r;
 }
 
-int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out)
+static int rtl2832_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out)
 {
 	uint32_t rtl_xtal;
 	int32_t if_freq;
@@ -719,15 +719,38 @@ int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out)
 	tmp = if_freq & 0xff;
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x1b, tmp, 1);
 
+	if (freq_out) *freq_out = ((int64_t)if_freq * rtl_xtal * -1 + TWO_POW(21)) / TWO_POW(22);
+
+	return r;
+}
+
+static int tuner_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq)
+{
 	/* Tell the R820T driver which IF frequency we are currently using
 	 * so that it can choose the optimal IF filter settings.
 	 * Works for normal tuning as well as no-mod direct sampling! */
-	if(dev->tuner_initialized && dev->tuner && dev->tuner->set_if_freq) {
+
+	int r = 0;
+
+	if (dev->tuner_initialized && dev->tuner && dev->tuner->set_if_freq) {
 		rtlsdr_set_i2c_repeater(dev, 1);
-		dev->tuner->set_if_freq(dev, freq);
+		r = dev->tuner->set_if_freq(dev, freq);
 	}
 
-	if (freq_out) *freq_out = ((int64_t)if_freq * rtl_xtal * -1 + TWO_POW(21)) / TWO_POW(22);
+	return r;
+}
+
+int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq)
+{
+	int r;
+
+	if (dev->direct_sampling) {
+		r = tuner_set_if_freq(dev, freq); /* set preferred IF (ignored in direct mode), update tuner IF filter */
+		r |= rtl2832_set_if_freq(dev, freq, NULL); /* set downconversion */
+	} else {
+		r = tuner_set_if_freq(dev, freq); /* set preferred IF, update tuner IF filter */
+		r |= rtlsdr_set_center_freq(dev, dev->freq); /* retune using the new IF; this will also change the 2832's IF */
+	}
 
 	return r;
 }
@@ -917,8 +940,8 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 		return -1;
 
 	if (dev->direct_sampling) {
-		rtlsdr_set_i2c_repeater(dev, 0);
-		r = rtlsdr_set_if_freq(dev, freq, &effective_freq);
+		r = rtl2832_set_if_freq(dev, freq, &effective_freq);
+		r |= tuner_set_if_freq(dev, freq);
 	} else if (dev->tuner && dev->tuner->set_freq) {
 		uint32_t target = freq - dev->offs_freq;
 		uint32_t tuner_lo = target;
@@ -1302,17 +1325,14 @@ int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 
 	/* based on keenerds 1/f noise measurements */
 	dev->offs_freq = on ? ((dev->rate / 2) * 170 / 100) : 0;
-	r |= rtlsdr_set_if_freq(dev, dev->offs_freq, NULL);
 
 	if (dev->tuner && dev->tuner->set_bw) {
 		rtlsdr_set_i2c_repeater(dev, 1);
-		dev->tuner->set_bw(dev, on ? (2 * dev->offs_freq) : dev->rate);
+		r |= dev->tuner->set_bw(dev, on ? (2 * dev->offs_freq) : dev->rate);
 		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
-	if (dev->freq > dev->offs_freq)
-		r |= rtlsdr_set_center_freq(dev, dev->freq);
-
+	r |= rtlsdr_set_if_freq(dev, dev->offs_freq); /* also retunes */
 	return r;
 }
 

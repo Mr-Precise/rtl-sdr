@@ -1075,12 +1075,8 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 
 int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out)
 {
-	/* nb: this path is only used for regular (heterodyned) tuning, so we can safely pick an IF ourselves.
-	 * we'll still get a callback telling us the exact desired IF, which will generally be very close to the one we picked.
-	 */
-
 	int rc = -1;
-	uint32_t lo_freq = freq + R82XX_DEFAULT_IF_FREQ;
+	uint32_t lo_freq = freq + priv->int_freq;
 	uint8_t air_cable1_in;
 
 	r82xx_write_batch_init(priv);
