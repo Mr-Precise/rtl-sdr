@@ -956,18 +956,8 @@ static int update_if_filter(struct r82xx_priv *priv) {
 	return 0;
 }
 
-int r82xx_set_if_freq(struct r82xx_priv *priv, uint32_t freq) {
-	priv->int_freq = freq;
-	return 0;
-}
-
 int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw) {
 	priv->bw = bw;
-	return update_if_filter(priv);
-}
-
-int r82xx_set_if_filter(struct r82xx_priv *priv, uint32_t freq) {
-	priv->if_filter_freq = freq;
 	return update_if_filter(priv);
 }
 
@@ -1072,7 +1062,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 
 int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out)
 {
-	int rc = -1;
+	int rc;
 	uint32_t lo_freq = freq + priv->int_freq;
 	uint32_t margin = 1e6 + priv->bw/2;
 	uint8_t air_cable1_in;
@@ -1080,8 +1070,6 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	r82xx_write_batch_init(priv);
 
 	rc = r82xx_set_mux(priv, freq);
-	if (rc < 0)
-		goto err;
 
 #define PLL_LOW 26.7e6
 #define PLL_HIGH 1850e6
@@ -1114,20 +1102,18 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		}
 	}
 
-	rc = r82xx_set_pll(priv, lo_freq, lo_freq_out);
+	rc |= r82xx_set_pll(priv, lo_freq, lo_freq_out);
 	if (rc < 0)
 		goto err;
 
 	if (lo_freq > freq) {
 		/* high-side mixing, image negative */
-		rc = r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
-		if (rc < 0)
-			return rc;
+		rc |= r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
+		priv->if_filter_freq = lo_freq - freq;
 	} else {
 		/* low-side mixing, image positive */
-		rc = r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
-		if (rc < 0)
-			return rc;
+		rc |= r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
+		priv->if_filter_freq = freq - lo_freq;
 	}
 
 	/* switch between 'Cable1' and 'Air-In' inputs on sticks with
@@ -1139,12 +1125,15 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	if ((priv->cfg->rafael_chip == CHIP_R828D) &&
 	    (air_cable1_in != priv->input)) {
 		priv->input = air_cable1_in;
-		rc = r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
+		rc |= r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
 	}
 
+	update_if_filter(priv);
+
 	if (priv->reg_batch) {
-		rc = r82xx_write_batch_sync(priv);
+		rc |= r82xx_write_batch_sync(priv);
 	}
+
 err:
 	if (rc < 0)
 		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);

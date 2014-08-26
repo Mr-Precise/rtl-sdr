@@ -117,12 +117,10 @@ enum r82xx_delivery_system {
 
 int r82xx_standby(struct r82xx_priv *priv);
 int r82xx_init(struct r82xx_priv *priv);
-int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out /* set to actual LO frequency used, including IF offset */ );
+int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out);
 int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain);
 int r82xx_set_nomod(struct r82xx_priv *priv);
 int r82xx_set_dither(struct r82xx_priv *priv, int dither);
 int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw);
-int r82xx_set_if_freq(struct r82xx_priv *priv, uint32_t freq);   /* preferred IF offset */
-int r82xx_set_if_filter(struct r82xx_priv *priv, uint32_t freq); /* center frequency of IF filter */
 
 #endif
