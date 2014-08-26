@@ -956,8 +956,6 @@ static int update_if_filter(struct r82xx_priv *priv) {
 	else if(cal > 15) cal = 15;
 	priv->fil_cal_code = cal;
 
-	fprintf(stderr, "Setting IF filter for %d...%d kHz: hp_cor=0x%02x, fil_cal_code=%d\n", hpf, lpf, hp_cor, cal);
-
 	rc = r82xx_write_reg_mask(priv, 0x0a,
 				  filt_q | priv->fil_cal_code, 0x1f);
 	if (rc < 0)

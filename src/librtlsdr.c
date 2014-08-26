@@ -1004,10 +1004,8 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 				inverted = 0;
                         }
 
-			fprintf(stderr, "freq=%u tuner_lo=%u, tuner_if=%u, inverted=%d\n", freq, tuner_lo, tuner_if, inverted);
 			r |= set_spectrum_inversion(dev, inverted);
 			r |= rtl2832_set_if_freq(dev, tuner_if, &actual_if);
-			fprintf(stderr, "set_if_filter(%u)\n", actual_if);
 			r |= tuner_set_if_filter(dev, actual_if);
 
 			if (inverted)
