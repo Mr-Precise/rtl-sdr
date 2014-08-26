@@ -493,20 +493,10 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 		return rc;
 
 	/* Calculate divider */
-	if(freq_khz < vco_min/64) vco_min /= 2;
-	if(freq_khz >= vco_max/2) vco_max *= 2;
-	while (mix_div <= 64) {
-		if (((freq_khz * mix_div) >= vco_min) &&
-		   ((freq_khz * mix_div) < vco_max)) {
-			div_buf = mix_div;
-			while (div_buf > 2) {
-				div_buf = div_buf >> 1;
-				div_num++;
-			}
+
+	for (mix_div = 2, div_num = 0; mix_div < 64; mix_div <<= 1, div_num++)
+		if ((freq_khz * mix_div) >= vco_min)
 			break;
-		}
-		mix_div = mix_div << 1;
-	}
 
 	if (priv->cfg->rafael_chip == CHIP_R828D)
 		vco_power_ref = 1;
