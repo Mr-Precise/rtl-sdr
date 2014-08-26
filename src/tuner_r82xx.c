@@ -1118,6 +1118,18 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	if (rc < 0)
 		goto err;
 
+	if (lo_freq > freq) {
+		/* high-side mixing, image negative */
+		rc = r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
+		if (rc < 0)
+			return rc;
+	} else {
+		/* low-side mixing, image positive */
+		rc = r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
+		if (rc < 0)
+			return rc;
+	}
+
 	/* switch between 'Cable1' and 'Air-In' inputs on sticks with
 	 * R828D tuner. We switch at 345 MHz, because that's where the
 	 * noise-floor has about the same level with identical LNA
