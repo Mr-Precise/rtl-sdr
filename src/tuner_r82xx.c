@@ -1081,7 +1081,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 
 	r82xx_write_batch_init(priv);
 
-	rc = r82xx_set_mux(priv, lo_freq);
+	rc = r82xx_set_mux(priv, freq);
 	if (rc < 0)
 		goto err;
 
