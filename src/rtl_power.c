@@ -106,7 +106,10 @@ struct tuning_state
 	int comp_fir_size;
 	int peak_hold;
 	int linear;
+	int bin_spec;
 	double crop;
+	int crop_i1, crop_i2;
+	int freq_low, freq_high;
 	//pthread_rwlock_t avg_lock;
 	//pthread_mutex_t avg_mutex;
 	/* having the iq buffer here is wasteful, but will avoid contention */
@@ -572,7 +575,8 @@ void frequency_range(char *arg, struct misc_settings *ms)
 {
 	struct channel_solve c;
 	struct tuning_state *ts;
-	int i, j, buf_len, length;
+	int i, j, buf_len, length, hop_bins, logged_bins, planned_bins;
+	int lower_edge, actual_bw, upper_perfect, remainder;
 
 	fprintf(stderr, "Range: %s\n", arg);
 	parse_frequency(arg, &c);
@@ -613,13 +617,17 @@ void frequency_range(char *arg, struct misc_settings *ms)
 		buf_len = DEFAULT_BUF_LENGTH;
 	}
 	/* build the array */
+	logged_bins = 0;
+	lower_edge = c.lower;
+	planned_bins = (c.upper - c.lower) / c.bin_spec;
 	for (i=0; i < c.hops; i++) {
 		ts = &tunes[tune_count + i];
-		ts->freq = c.lower + i*c.bw_wanted + c.bw_wanted/2;
+		/* copy common values */
 		ts->rate = c.bw_needed;
 		ts->gain = ms->gain;
 		ts->bin_e = c.bin_e;
 		ts->samples = 0;
+		ts->bin_spec = c.bin_spec;
 		ts->crop = c.crop;
 		ts->downsample = c.downsample;
 		ts->downsample_passes = c.downsample_passes;
@@ -645,6 +653,29 @@ void frequency_range(char *arg, struct misc_settings *ms)
 		for (j=0; j<length; j++) {
 			ts->window_coefs[j] = (int)(256*ms->window_fn(j, length));
 		}
+		/* calculate unique values */
+		ts->freq_low = lower_edge;
+		hop_bins = c.bw_wanted / c.bin_spec;
+		actual_bw = hop_bins * c.bin_spec;
+		ts->freq_high = lower_edge + actual_bw;
+		upper_perfect = c.lower + (i+1) * c.bw_wanted;
+		if (ts->freq_high + c.bin_spec <= upper_perfect) {
+			hop_bins += 1;
+			actual_bw = hop_bins * c.bin_spec;
+			ts->freq_high = lower_edge + actual_bw;
+		}
+		remainder = planned_bins - logged_bins - hop_bins;
+		if (i == c.hops-1 && remainder > 0) {
+			hop_bins += remainder;
+			actual_bw = hop_bins * c.bin_spec;
+			ts->freq_high = lower_edge + actual_bw;
+		}
+		logged_bins += hop_bins;
+		ts->crop_i1 = (length - hop_bins) / 2;
+		ts->crop_i2 = ts->crop_i1 + hop_bins - 1;
+		ts->freq = (lower_edge - ts->crop_i1 * c.bin_spec) + c.bw_needed/2;
+		/* prep for next hop */
+		lower_edge = ts->freq_high;
 	}
 	tune_count += c.hops;
 	/* report */
@@ -653,8 +684,7 @@ void frequency_range(char *arg, struct misc_settings *ms)
 	fprintf(stderr, "Downsampling by: %ix\n", c.downsample);
 	fprintf(stderr, "Cropping by: %0.2f%%\n", c.crop*100);
 	fprintf(stderr, "Total FFT bins: %i\n", c.hops * (1<<c.bin_e));
-	fprintf(stderr, "Logged FFT bins: %i\n", \
-	  (int)((double)(c.hops * (1<<c.bin_e)) * (1.0-c.crop)));
+	fprintf(stderr, "Logged FFT bins: %i\n", logged_bins);
 	fprintf(stderr, "FFT bin size: %iHz\n", c.bin_spec);
 	fprintf(stderr, "Buffer size: %i bytes (%0.2fms)\n", buf_len, 1000 * 0.5 * (float)buf_len / (float)c.bw_needed);
 	fprintf(stderr, "\n");
@@ -874,7 +904,7 @@ void scanner(void)
 
 void csv_dbm(struct tuning_state *ts)
 {
-	int i, len, ds, i1, i2, bw2, bin_count;
+	int i, len, ds;
 	long tmp;
 	double dbm;
 	char *sep = ", ";
@@ -892,15 +922,11 @@ void csv_dbm(struct tuning_state *ts)
 		}
 	}
 	/* Hz low, Hz high, Hz step, samples, dbm, dbm, ... */
-	bin_count = (int)((double)len * (1.0 - ts->crop));
-	bw2 = (int)(((double)ts->rate * (double)bin_count) / (len * 2 * ds));
-	fprintf(file, "%i, %i, %.2f, %i, ", ts->freq - bw2, ts->freq + bw2,
-		(double)ts->rate / (double)(len*ds), ts->samples);
+	fprintf(file, "%i, %i, %i, %i, ", ts->freq_low, ts->freq_high,
+		ts->bin_spec, ts->samples);
 	// something seems off with the dbm math
-	i1 = 0 + (int)((double)len * ts->crop * 0.5);
-	i2 = (len-1) - (int)((double)len * ts->crop * 0.5);
-	for (i=i1; i<=i2; i++) {
-		if (i == i2) {
+	for (i=ts->crop_i1; i<=ts->crop_i2; i++) {
+		if (i == ts->crop_i2) {
 			sep = "\n";
 		}
 		dbm  = (double)ts->avg[i];
