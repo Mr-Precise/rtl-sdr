@@ -341,15 +341,14 @@ int e4k_if_filter_bw_get(struct e4k_state *e4k, enum e4k_if_filter filter)
 #define E4K_PLL_Y		65536
 
 #ifdef OUT_OF_SPEC
-#define E4K_FVCO_MIN_KHZ	2400000UL /* 2.4 GHz */
-#define E4K_FVCO_MAX_KHZ	4400000UL /* 4.4 GHz */
-#define E4K_FLO_MIN_MHZ		50      /* FVCO_MIN / 48 */
-#define E4K_FLO_MAX_MHZ		2200UL  /* FVCO_MAX / 2 */
+#define E4K_FVCO_MIN_KHZ	2400000UL /* 2.4 GHz; min FLO is 2400/48 = 50MHz */
+#define E4K_FVCO_MAX_KHZ	4400000UL /* 4.4 GHz; max FLO is 4400/2  = 2200MHz  */
 #else
-#define E4K_FVCO_MIN_KHZ	2600000UL /* 2.6 GHz */
-#define E4K_FVCO_MAX_KHZ	3900000UL /* 3.9 GHz */
-#define E4K_FLO_MIN_MHZ		64      /* FVCO_MIN / 48 */
-#define E4K_FLO_MAX_MHZ		1700    /* FVCO_MAX / 2 */
+/* NB: Datasheet values for RF input and LO ranges are 64 - 1700MHz.
+ * The values below are from the slightly wider VCO ranges.
+ */
+#define E4K_FVCO_MIN_KHZ	2600000UL /* 2.6 GHz; min FLO is 2600/48 = 54MHz */
+#define E4K_FVCO_MAX_KHZ	3900000UL /* 3.9 GHz; max FLO is 3900/2 = 1950MHz */
 #endif
 
 struct pll_settings {
