@@ -37,6 +37,30 @@
  * Static constants
  */
 
+/*
+ * These should be "safe" values, always. If we fail to get PLL lock in this range,
+ * it's a hard error.
+ */
+#define PLL_SAFE_LOW 28e6
+#define PLL_SAFE_HIGH 1845e6
+
+/*
+ * These are the initial, widest, PLL limits that we will try.
+ *
+ * Be cautious with lowering the low bound further - the PLL can claim to be locked
+ * when configured to a lower frequency, but actually be running at around 26.6MHz
+ * regardless of what it was configured for.
+ *
+ * This shows up as a tuning offset at low frequencies, and a "dead zone" about
+ * 6MHz below the PLL lower bound where retuning within that region has no effect.
+ */
+#define PLL_INITIAL_LOW 26.7e6
+#define PLL_INITIAL_HIGH 1860e6
+
+/* We shrink the range edges by at least this much each time there is a soft PLL lock failure */
+#define PLL_STEP_LOW 0.1e6
+#define PLL_STEP_HIGH 1.0e6
+
 /* Those initial values start from REG_SHADOW_START */
 static const uint8_t r82xx_init_array[NUM_REGS] = {
 	0x83, 0x32, 0x75,			/* 05 to 07 */
@@ -601,8 +625,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	}
 
 	if (!(data[2] & 0x40)) {
-		fprintf(stderr, "[R82XX] PLL not locked!\n");
-		return -1;
+		return -42;
 	}
 
 	/* set pll autotune = 8kHz */
@@ -1067,6 +1090,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	uint32_t lo_freq = freq + priv->int_freq;
 	uint32_t margin = 1e6 + priv->bw/2;
 	uint8_t air_cable1_in;
+	int changed_pll_limits = 0;
 
 	r82xx_write_batch_init(priv);
 
@@ -1088,7 +1112,8 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 
 	/* IF generation settings */
 
-	if (freq < 14.4e6) {
+ retune:
+	if (freq < 14.4e6 && freq < (priv->pll_low_limit - 14.4e6)) {
 		/* Previously "no-mod direct sampling" - confuse the VCO/PLL
 		 * sufficiently that we get the HF signal leaking through
 		 * the tuner, then sample that directly.
@@ -1110,15 +1135,13 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		if (lo_freq_out) *lo_freq_out = 0;
 	} else {
 		/* Normal tuning case */
-		
+		int pll_error = 0;
+
 		if (priv->pll_off) {
 			/* Crossed the 14.4MHz boundary, power the VCO back on */
 			rc |= r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
 			priv->pll_off = 0;
 		}
-
-#define PLL_LOW 26.7e6
-#define PLL_HIGH 1850e6
 
 		/*
 		 * Keep PLL within empirically stable bounds; outside those bounds,
@@ -1134,23 +1157,48 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		 * to be a ~600kHz high-pass filter in the IF path, so you don't want
 		 * any interesting frequencies to land near the IF.
 		 */
-		if (lo_freq < PLL_LOW) {
-			if (freq > (PLL_LOW-margin) && freq < (PLL_LOW+margin)) {
+
+		if (lo_freq < priv->pll_low_limit) {
+			if (freq > (priv->pll_low_limit-margin) && freq < (priv->pll_low_limit+margin)) {
 				lo_freq = freq + margin;
 			} else {
-				lo_freq = PLL_LOW;
+				lo_freq = priv->pll_low_limit;
 			}
-		} else if (lo_freq > PLL_HIGH) {
-			if (freq > (PLL_HIGH-margin) && freq < (PLL_HIGH+margin)) {
+		} else if (lo_freq > priv->pll_high_limit) {
+			if (freq > (priv->pll_high_limit-margin) && freq < (priv->pll_high_limit+margin)) {
 				lo_freq = freq - margin;
 			} else {
-				lo_freq = PLL_HIGH;
+				lo_freq = priv->pll_high_limit;
 			}
 		}
 
-		rc |= r82xx_set_pll(priv, lo_freq, lo_freq_out);
-		if (rc < 0)
-			goto err;
+		pll_error = r82xx_set_pll(priv, lo_freq, lo_freq_out);
+		if (pll_error == -42) {
+			/* Magic return value to say that the PLL didn't lock.
+			 * If we are close to the edge of the PLL range, shift the range and try again.
+			 */
+			if (lo_freq < PLL_SAFE_LOW) {
+				priv->pll_low_limit = lo_freq + PLL_STEP_LOW;
+				if (priv->pll_low_limit > PLL_SAFE_LOW)
+					priv->pll_low_limit = PLL_SAFE_LOW;
+				changed_pll_limits = 1;
+				goto retune;
+			} else if (lo_freq > PLL_SAFE_HIGH) {
+				priv->pll_high_limit = lo_freq - PLL_STEP_HIGH;
+				if (priv->pll_high_limit < PLL_SAFE_HIGH)
+					priv->pll_high_limit = PLL_SAFE_HIGH;
+				changed_pll_limits = 1;
+				goto retune;
+			} else {
+				fprintf(stderr, "[r82xx] Failed to get PLL lock at %u Hz\n", lo_freq);
+			}
+		}
+
+		rc |= pll_error;
+	}
+
+	if (changed_pll_limits) {
+		fprintf(stderr, "[r82xx] Updated PLL limits to %u .. %u Hz\n", priv->pll_low_limit, priv->pll_high_limit);
 	}
 
 	/* IF filter / image rejection settings */
@@ -1342,6 +1390,9 @@ int r82xx_init(struct r82xx_priv *priv)
 	   so there's no need to call r82xx_set_if_filter here */
 
 	rc |= r82xx_sysfreq_sel(priv, 0, TUNER_DIGITAL_TV, SYS_DVBT);
+
+	priv->pll_low_limit = PLL_INITIAL_LOW;
+	priv->pll_high_limit = PLL_INITIAL_HIGH;
 
 	priv->init_done = 1;
 	priv->reg_cache = 1;

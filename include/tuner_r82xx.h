@@ -97,6 +97,10 @@ struct r82xx_priv {
 
 	int pll_off;
 
+	/* current PLL limits */
+	uint32_t pll_low_limit;
+	uint32_t pll_high_limit;
+
 	void *rtl_dev;
 };
 
