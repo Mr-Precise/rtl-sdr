@@ -485,6 +485,7 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 		return rc;
 
 	/* set VCO current = 100 */
+	priv->pll_off = 0;
 	rc = r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
 	if (rc < 0)
 		return rc;
@@ -1069,52 +1070,9 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 
 	r82xx_write_batch_init(priv);
 
+	/* RF input settings */
+
 	rc = r82xx_set_mux(priv, freq);
-
-#define PLL_LOW 26.7e6
-#define PLL_HIGH 1850e6
-
-	/*
-	 * Keep PLL within empirically stable bounds; outside those bounds,
-	 * we prefer to tune to the "wrong" frequency; the difference will be
-	 * mopped up by the 2832 downconverter.
-	 *
-	 * Beware that outside the stable range, the PLL can claim to be locked
-	 * while it is actually stuck at a different frequency (e.g. sometimes
-	 * it can claim to get PLL lock when configured anywhere between 24 and
-	 * 26MHz, but it actually always locks to 26.6-ish).
-	 *
-	 * Make sure to keep the LO away from tuned frequency as there seems
-	 * to be a ~600kHz high-pass filter in the IF path, so you don't want
-	 * any interesting frequencies to land near the IF.
-	 */
-	if (lo_freq < PLL_LOW) {
-		if (freq > (PLL_LOW-margin) && freq < (PLL_LOW+margin)) {
-			lo_freq = freq + margin;
-		} else {
-			lo_freq = PLL_LOW;
-		}
-	} else if (lo_freq > PLL_HIGH) {
-		if (freq > (PLL_HIGH-margin) && freq < (PLL_HIGH+margin)) {
-			lo_freq = freq - margin;
-		} else {
-			lo_freq = PLL_HIGH;
-		}
-	}
-
-	rc |= r82xx_set_pll(priv, lo_freq, lo_freq_out);
-	if (rc < 0)
-		goto err;
-
-	if (lo_freq > freq) {
-		/* high-side mixing, image negative */
-		rc |= r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
-		priv->if_filter_freq = lo_freq - freq;
-	} else {
-		/* low-side mixing, image positive */
-		rc |= r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
-		priv->if_filter_freq = freq - lo_freq;
-	}
 
 	/* switch between 'Cable1' and 'Air-In' inputs on sticks with
 	 * R828D tuner. We switch at 345 MHz, because that's where the
@@ -1126,6 +1084,85 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	    (air_cable1_in != priv->input)) {
 		priv->input = air_cable1_in;
 		rc |= r82xx_write_reg_mask(priv, 0x05, air_cable1_in, 0x60);
+	}
+
+	/* IF generation settings */
+
+	if (freq < 14.4e6) {
+		/* Previously "no-mod direct sampling" - confuse the VCO/PLL
+		 * sufficiently that we get the HF signal leaking through
+		 * the tuner, then sample that directly.
+		 *
+		 * Disable the VCO, as far as we can.
+		 * This throws a big spike of noise into the signal,
+		 * so only do it once when crossing the 14.4MHz boundary,
+		 * not on every retune.
+		 */
+		if (!priv->pll_off) {
+			rc |= r82xx_set_pll(priv, 50e6, NULL);              /* Might influence the noise floor? */
+			rc |= r82xx_write_reg_mask(priv, 0x10, 0xd0, 0xe0); /* impossible mix_div setting */
+			rc |= r82xx_write_reg_mask(priv, 0x12, 0xe0, 0xe0); /* VCO current = 0 */
+			priv->pll_off = 1;
+		}
+
+		/* We are effectively tuned to 0Hz - the downconverter must do all the heavy lifting now */
+		lo_freq = 0;
+		if (lo_freq_out) *lo_freq_out = 0;
+	} else {
+		/* Normal tuning case */
+		
+		if (priv->pll_off) {
+			/* Crossed the 14.4MHz boundary, power the VCO back on */
+			rc |= r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
+			priv->pll_off = 0;
+		}
+
+#define PLL_LOW 26.7e6
+#define PLL_HIGH 1850e6
+
+		/*
+		 * Keep PLL within empirically stable bounds; outside those bounds,
+		 * we prefer to tune to the "wrong" frequency; the difference will be
+		 * mopped up by the 2832 downconverter.
+		 *
+		 * Beware that outside the stable range, the PLL can claim to be locked
+		 * while it is actually stuck at a different frequency (e.g. sometimes
+		 * it can claim to get PLL lock when configured anywhere between 24 and
+		 * 26MHz, but it actually always locks to 26.6-ish).
+		 *
+		 * Make sure to keep the LO away from tuned frequency as there seems
+		 * to be a ~600kHz high-pass filter in the IF path, so you don't want
+		 * any interesting frequencies to land near the IF.
+		 */
+		if (lo_freq < PLL_LOW) {
+			if (freq > (PLL_LOW-margin) && freq < (PLL_LOW+margin)) {
+				lo_freq = freq + margin;
+			} else {
+				lo_freq = PLL_LOW;
+			}
+		} else if (lo_freq > PLL_HIGH) {
+			if (freq > (PLL_HIGH-margin) && freq < (PLL_HIGH+margin)) {
+				lo_freq = freq - margin;
+			} else {
+				lo_freq = PLL_HIGH;
+			}
+		}
+
+		rc |= r82xx_set_pll(priv, lo_freq, lo_freq_out);
+		if (rc < 0)
+			goto err;
+	}
+
+	/* IF filter / image rejection settings */
+
+	if (lo_freq > freq) {
+		/* high-side mixing, image negative */
+		rc |= r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
+		priv->if_filter_freq = lo_freq - freq;
+	} else {
+		/* low-side mixing, image positive */
+		rc |= r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
+		priv->if_filter_freq = freq - lo_freq;
 	}
 
 	update_if_filter(priv);

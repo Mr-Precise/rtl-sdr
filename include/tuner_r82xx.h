@@ -95,6 +95,8 @@ struct r82xx_priv {
 	uint32_t			bw;	/* in MHz */
 	uint32_t			if_filter_freq;	/* in Hz */
 
+	int pll_off;
+
 	void *rtl_dev;
 };
 
