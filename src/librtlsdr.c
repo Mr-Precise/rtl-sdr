@@ -145,8 +145,7 @@ int e4000_exit(void *dev) {
 }
 int e4000_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
-	if (lo_freq_out) *lo_freq_out = freq;
-	return e4k_tune_freq(&devt->e4k_s, freq);
+	return e4k_tune_freq(&devt->e4k_s, freq, lo_freq_out);
 }
 
 int e4000_set_bw(void *dev, int bw) {
