@@ -225,7 +225,7 @@ static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 static uint32_t max_step(uint32_t freq) {
 	if (freq < 1e6)
 		return 1e4;
-	if (freq > 1e9)
+	if (freq > 1e8)
 		return 1e6;
 	return freq / 1e2;
 }
