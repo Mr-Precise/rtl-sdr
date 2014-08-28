@@ -707,7 +707,7 @@ static int rtl2832_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_
 
 	if_freq = ((rtl_xtal/2 + (uint64_t)freq * TWO_POW(22)) / rtl_xtal) * (-1);
 	if (if_freq <= -0x200000) {
-		fprintf(stderr, "rtl2832_set_if_freq(): %u Hz out of range for downconverter (divisor would be %x)\n", freq, if_freq);
+		/* fprintf(stderr, "rtl2832_set_if_freq(): %u Hz out of range for downconverter (divisor would be %x)\n", freq, if_freq); */
 		return -2;
 	}
 
