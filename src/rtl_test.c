@@ -333,7 +333,7 @@ void tuner_benchmark(void)
 			break;
 
 		case REFINE_END:
-			/* refining the start of a band */
+			/* refining the end of a band */
 			/* low_bound <= bandend < high_bound */
 			if (rtlsdr_set_center_freq(dev, current) < 0) {
 				/* current is outside the band */
