@@ -557,10 +557,9 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	nint = (uint32_t) (vco_div / 65536);
 	sdm = (uint32_t) (vco_div % 65536);
 
-	if (priv->cfg->rafael_chip == CHIP_R828D && nint > 127) {
-		fprintf(stderr, "[R828D] No valid PLL values for %u Hz!\n", freq);
-		return -1;
-	} else if (nint > 76) {
+	if (nint < 13 ||
+	    (priv->cfg->rafael_chip == CHIP_R828D && nint > 127) ||
+	    (priv->cfg->rafael_chip != CHIP_R828D && nint > 76)) {
 		fprintf(stderr, "[R82XX] No valid PLL values for %u Hz!\n", freq);
 		return -1;
 	}
