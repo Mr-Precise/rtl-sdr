@@ -55,7 +55,7 @@
  * 6MHz below the PLL lower bound where retuning within that region has no effect.
  */
 #define PLL_INITIAL_LOW 26.7e6
-#define PLL_INITIAL_HIGH 1860e6
+#define PLL_INITIAL_HIGH 1885e6
 
 /* We shrink the range edges by at least this much each time there is a soft PLL lock failure */
 #define PLL_STEP_LOW 0.1e6
