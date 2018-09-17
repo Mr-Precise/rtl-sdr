@@ -1585,7 +1585,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
-		fprintf(stderr, "Found Rafael Micro R820T tuner\n");
+		fprintf(stderr, "Found Rafael Micro R820T or R820T2 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
 		goto found;
 	}
@@ -1627,6 +1627,7 @@ found:
 	switch (dev->tuner_type) {
 	case RTLSDR_TUNER_R828D:
 		dev->tun_xtal = R828D_XTAL_FREQ;
+		/* fall-through */
 	case RTLSDR_TUNER_R820T:
 		/* disable Zero-IF mode */
 		rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);
