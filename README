@@ -3,10 +3,15 @@ turns your Realtek RTL2832 based DVB dongle into a SDR receiver
 ======================================================================
 
 For more information see:
-http://sdr.osmocom.org/trac/wiki/rtl-sdr
+https://osmocom.org/projects/rtl-sdr/wiki
+=========================================
+Experimental R820T and R820T2 rtl-sdr driver that tunes down to 13 mhz or lower.
+(From my experiments up to 3.4 Mhz on R820T2)
+2017-2018: Transferring new features from new versions and fixes...
 
 
-Notes on the mutability tree (2014/09/29)
+
+(old) Notes on the mutability tree (2014/09/29)
 =========================================
 
 Since there seems to be some wider interest in this, some quick notes on
