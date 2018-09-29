@@ -103,7 +103,6 @@ struct rtlsdr_dev {
 	void *cb_ctx;
 	enum rtlsdr_async_status async_status;
 	int async_cancel;
-	int use_zerocopy;
 	/* rtl demod context */
 	uint32_t rate; /* Hz */
 	uint32_t rtl_xtal; /* Hz */
@@ -1774,43 +1773,12 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 			dev->xfer[i] = libusb_alloc_transfer(0);
 	}
 
-	if (dev->xfer_buf)
-		return -2;
+	if (!dev->xfer_buf) {
+		dev->xfer_buf = malloc(dev->xfer_buf_num *
+					   sizeof(unsigned char *));
 
-	dev->xfer_buf = malloc(dev->xfer_buf_num * sizeof(unsigned char *));
-	memset(dev->xfer_buf, 0, dev->xfer_buf_num * sizeof(unsigned char *));
- #if defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
-	fprintf(stderr, "Allocating %d zero-copy buffers\n", dev->xfer_buf_num);
- 	dev->use_zerocopy = 1;
-	for (i = 0; i < dev->xfer_buf_num; ++i) {
-		dev->xfer_buf[i] = libusb_dev_mem_alloc(dev->devh, dev->xfer_buf_len);
- 		if (!dev->xfer_buf[i]) {
-			fprintf(stderr, "Failed to allocate zero-copy "
-					"buffer for transfer %d\nFalling "
-					"back to buffers in userspace\n", i);
- 			dev->use_zerocopy = 0;
-			break;
-		}
-	}
- 	/* zero-copy buffer allocation failed (partially or completely)
-	 * we need to free the buffers again if already allocated */
-	if (!dev->use_zerocopy) {
-		for (i = 0; i < dev->xfer_buf_num; ++i) {
-			if (dev->xfer_buf[i])
-				libusb_dev_mem_free(dev->devh,
-						    dev->xfer_buf[i],
-						    dev->xfer_buf_len);
-		}
-	}
-#endif
- 	/* no zero-copy available, allocate buffers in userspace */
-	if (!dev->use_zerocopy) {
-		for (i = 0; i < dev->xfer_buf_num; ++i) {
+		for(i = 0; i < dev->xfer_buf_num; ++i)
 			dev->xfer_buf[i] = malloc(dev->xfer_buf_len);
-
-			if (!dev->xfer_buf[i])
-				return -ENOMEM;
-		}
 	}
 
 	return 0;
@@ -1835,18 +1803,9 @@ static int _rtlsdr_free_async_buffers(rtlsdr_dev_t *dev)
 	}
 
 	if (dev->xfer_buf) {
-		for (i = 0; i < dev->xfer_buf_num; ++i) {
-			if (dev->xfer_buf[i]) {
-				if (dev->use_zerocopy) {
-#if defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
-					libusb_dev_mem_free(dev->devh,
-							    dev->xfer_buf[i],
-							    dev->xfer_buf_len);
-#endif
-				} else {
-					free(dev->xfer_buf[i]);
-				}
-			}
+		for(i = 0; i < dev->xfer_buf_num; ++i) {
+			if (dev->xfer_buf[i])
+				free(dev->xfer_buf[i]);
 		}
 
 		free(dev->xfer_buf);
@@ -1901,12 +1860,7 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 
 		r = libusb_submit_transfer(dev->xfer[i]);
 		if (r < 0) {
-			fprintf(stderr, "Failed to submit transfer %i\n"
-					"Please increase your allowed " 
-					"usbfs buffer size with the "
-					"following command:\n"
-					"echo 0 > /sys/module/usbcore"
-					"/parameters/usbfs_memory_mb\n", i);
+			fprintf(stderr, "Failed to submit transfer %i!\n", i);
 			dev->async_status = RTLSDR_CANCELING;
 			break;
 		}
