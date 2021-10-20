@@ -37,8 +37,8 @@ include(GenerateExportHeader)
 include(CMakePackageConfigHelpers)
 
 # Set the version information here
-set(VERSION_INFO_MAJOR_VERSION 0) # increment major on api compatibility changes
-set(VERSION_INFO_MINOR_VERSION 7) # increment minor on feature-level changes
+set(VERSION_INFO_MAJOR_VERSION 2021) # increment major on api compatibility changes
+set(VERSION_INFO_MINOR_VERSION 10) # increment minor on feature-level changes
 set(VERSION_INFO_PATCH_VERSION git) # increment patch for bug fixes and docs
 include(Version) # setup version info
 
