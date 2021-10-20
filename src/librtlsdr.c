@@ -1658,6 +1658,9 @@ found:
 	return 0;
 err:
 	if (dev) {
+		// fix memory leak in rtlsdr_open()
+		if (dev->devh)
+			libusb_close(dev->devh);
 		if (dev->ctx)
 			libusb_exit(dev->ctx);
 
@@ -1779,7 +1782,7 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 
 	dev->xfer_buf = malloc(dev->xfer_buf_num * sizeof(unsigned char *));
 	memset(dev->xfer_buf, 0, dev->xfer_buf_num * sizeof(unsigned char *));
- #if defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
+#if defined(ENABLE_ZEROCOPY) && defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
 	fprintf(stderr, "Allocating %d zero-copy buffers\n", dev->xfer_buf_num);
  	dev->use_zerocopy = 1;
 	for (i = 0; i < dev->xfer_buf_num; ++i) {
@@ -2048,13 +2051,18 @@ int rtlsdr_i2c_read_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
 	} while (retries > 0);
 	return -1;
 }
-int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
 	if (!dev)
 		return -1;
 
-	rtlsdr_set_gpio_output(dev, 0);
-	rtlsdr_set_gpio_bit(dev, 0, on);
+	rtlsdr_set_gpio_output(dev, gpio);
+	rtlsdr_set_gpio_bit(dev, gpio, on);
 
 	return 0;
+}
+// Add GPIO version of the bias tee configuration API
+int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+{
+	return rtlsdr_set_bias_tee_gpio(dev, 0, on);
 }
