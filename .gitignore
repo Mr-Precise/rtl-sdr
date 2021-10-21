@@ -40,3 +40,4 @@ CMakeCache.txt
 CMakeFiles
 *.cmake
 .vscode
+build/
