@@ -25,19 +25,6 @@ stamp-h1
 libtool
 Doxyfile
 
-.tarball-version
 .version
-
-.*.swp
-
-doc/
-
-src/rtl_sdr
-src/rtl_tcp
-
-CMakeCache.txt
-*/CMakeFiles
-CMakeFiles
-*.cmake
-.vscode
+.vscode/
 build/
