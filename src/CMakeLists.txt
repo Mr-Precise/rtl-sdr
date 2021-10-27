@@ -128,6 +128,14 @@ target_link_libraries(rtl_biast rtlsdr convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
+
+# static link winpthread for MinGW build
+if(MINGW)
+  target_link_libraries(rtl_tcp -static winpthread)
+  target_link_libraries(rtl_fm -static winpthread)
+  target_link_libraries(rtl_adsb -static winpthread)
+endif()
+
 if(UNIX)
 target_link_libraries(rtl_fm m)
 target_link_libraries(rtl_adsb m)
