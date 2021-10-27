@@ -105,7 +105,7 @@ add_custom_target(uninstall
 option(INSTALL_UDEV_RULES "Install udev rules for RTL-SDR" OFF)
 if (INSTALL_UDEV_RULES)
     install (
-        FILES rtl-sdr.rules
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr.rules"
         DESTINATION "/etc/udev/rules.d"
         COMPONENT "udev"
         )

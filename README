@@ -8,6 +8,7 @@ https://osmocom.org/projects/rtl-sdr/wiki
 Experimental R820T and R820T2 rtl-sdr driver that tunes down to 13 mhz or lower.
 (From my experiments up to 3.4 Mhz on R820T2)
 2017-2018: Transferring new features from new versions and fixes...
+2021: Project is now using only cmake build system.
 
 
 
