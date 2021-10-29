@@ -3,11 +3,8 @@
   ======================================================================
    
    
-  <div align="center">
-  <p>Join to the Discord server:</p>  
-  <a href="http://discord.gg/HP99wM4yNR" target="_blank"><img src="https://invidget.switchblade.xyz/HP99wM4yNR"></a>
-  </div>
-
+  [![Join Discord server!](https://invidget.switchblade.xyz/HP99wM4yNR)](http://discord.gg/HP99wM4yNR) 
+  
   Experimental R820T and R820T2 rtl-sdr driver that tunes down to 13 mhz or lower.  
   (From my experiments up to 3.4 Mhz on R820T2)
   
