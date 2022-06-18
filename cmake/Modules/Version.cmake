@@ -49,7 +49,7 @@ endif()
 if("${PATCH_VERSION}" STREQUAL "git")
     # VERSION: 3.6git-xxx-gxxxxxxxx
     # LIBVER:  3.6git
-    set(VERSION "${GIT_DESCRIBE}")
+    set(VERSION "${MAJOR_VERSION}.${MINOR_VERSION}${PATCH_VERSION}-${GIT_DESCRIBE}")
     set(LIBVER  "${MAJOR_VERSION}.${MINOR_VERSION}${PATCH_VERSION}")
 else()
     # This is a numbered release.
