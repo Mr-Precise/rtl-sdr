@@ -11,7 +11,7 @@
   2017-2018: Transferring new features from new versions and fixes...  
   2021: Project is now using only cmake build system.  
   Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC  
-  thanks for Iskiri.
+  thanks for Iskuri.
 
   
   

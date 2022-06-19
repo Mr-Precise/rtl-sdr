@@ -1,4 +1,4 @@
-// Thanks for Iskiri
+// Thanks for Iskuri
 // Code from repository: https://github.com/Iskuri/RTLSDR-NFC
 //
 #include <fcntl.h>
