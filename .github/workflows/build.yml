@@ -90,9 +90,6 @@ jobs:
       - name: Extract All Builds
         uses: actions/download-artifact@v3
 
-      - name: List builds
-        run: ls
-
       - name: Create Archive
         run: >
           mkdir rtl-sdr_all && 
