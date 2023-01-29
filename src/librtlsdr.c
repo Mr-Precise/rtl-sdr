@@ -1678,7 +1678,6 @@ found:
 	return 0;
 err:
 	if (dev) {
-		// fix memory leak in rtlsdr_open()
 		if (dev->devh)
 			libusb_close(dev->devh);
 		if (dev->ctx)
