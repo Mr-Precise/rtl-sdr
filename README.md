@@ -14,9 +14,15 @@
   thanks for Iskuri.
 
   
-  
+  ### Setup for SDR only use - without DVB compatibility:
 
-  (old) Notes on the mutability tree (2014/09/29)
+- a special USB vendor/product id got reserved at http://pid.codes/ : 0x1209/0x2832
+- for such devices the linux kernel's DVB modules are not loaded automatically,
+ thus can be used without blacklisting dvb_usb_rtl28xxu below /etc/modprobe.d/
+- this allows to use a second RTL dongle for use with DVB in parallel
+- the IDs can be programmed with 'rtl_eeprom -n' or 'rtl_eeprom -g realtek_sdr'  
+
+## (old) Notes on the mutability tree (2014/09/29)
   =========================================
   For more information see:
   https://osmocom.org/projects/rtl-sdr/wiki 
