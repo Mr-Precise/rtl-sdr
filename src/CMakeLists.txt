@@ -21,6 +21,10 @@
 add_library(rtlsdr SHARED librtlsdr.c
   tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
 target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
+if(APPLE)
+  target_link_directories(rtlsdr PUBLIC ${LIBUSB_LIBRARY_DIRS})
+endif(APPLE)
+
 target_include_directories(rtlsdr PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
