@@ -413,7 +413,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:T")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -520,7 +520,6 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Tuner gain set to %f dB.\n", gain/10.0);
 	}
 
-	//rtlsdr_set_bias_tee EXPERIMENTAL
 	rtlsdr_set_bias_tee(dev, enable_biastee);
 	if (enable_biastee)
 		fprintf(stderr, "activated bias-T on GPIO PIN 0\n");
@@ -566,6 +565,7 @@ int main(int argc, char **argv)
 		r = 1;
 		setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
 		setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
+
 		if (bind(listensocket, (struct sockaddr *)&local, sizeof(local)))
 			fprintf(stderr, "rtl_tcp bind error: %s", strerror(errno));
 		else
