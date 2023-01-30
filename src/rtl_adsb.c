@@ -45,7 +45,9 @@
 
 #ifdef _WIN32
 #define sleep Sleep
+#if defined(_MSC_VER) && (_MSC_VER < 1800)
 #define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
+#endif
 #endif
 
 #define ADSB_RATE			2000000
@@ -94,6 +96,7 @@ void usage(void)
 		"\t[-e allowed_errors (default: 5)]\n"
 		"\t[-g tuner_gain (default: automatic)]\n"
 		"\t[-p ppm_error (default: 0)]\n"
+		"\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n"
 		"\tfilename (a '-' dumps samples to stdout)\n"
 		"\t (omitting the filename also uses stdout)\n\n"
 		"Streaming with netcat:\n"
@@ -370,11 +373,12 @@ int main(int argc, char **argv)
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;
+	int enable_biastee = 0;
 	pthread_cond_init(&ready, NULL);
 	pthread_mutex_init(&ready_m, NULL);
 	squares_precompute();
 
-	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VS")) != -1)
+	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VST")) != -1)
 	{
 		switch (opt) {
 		case 'd':
@@ -398,6 +402,9 @@ int main(int argc, char **argv)
 			break;
 		case 'Q':
 			quality = (int)(atof(optarg) * 10);
+			break;
+		case 'T':
+			enable_biastee = 1;
 			break;
 		default:
 			usage();
@@ -468,6 +475,10 @@ int main(int argc, char **argv)
 
 	/* Set the sample rate */
 	verbose_set_sample_rate(dev, ADSB_RATE);
+
+	rtlsdr_set_bias_tee(dev, enable_biastee);
+	if (enable_biastee)
+		fprintf(stderr, "activated bias-T on GPIO PIN 0\n");
 
 	/* Reset endpoint before we start reading from it (mandatory) */
 	verbose_reset_buffer(dev);

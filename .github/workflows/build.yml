@@ -1,0 +1,112 @@
+name: rtl-sdr CI cmake build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+    build_ubuntu_latest-amd64:
+      runs-on: ubuntu-latest
+
+      steps:
+      - uses: actions/checkout@v2
+      - name: prerequisites
+        run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
+      - name: run_cmake_build
+        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
+      - name: compress
+        run: tar zcvf rtl-sdr_build_ubuntu_latest-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu_latest_build
+          path: rtl-sdr_build_ubuntu_latest-amd64.tar.gz
+
+    build_ubuntu-amd64_20_04:
+      runs-on: ubuntu-20.04
+
+      steps:
+      - uses: actions/checkout@v2
+      - name: prerequisites
+        run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
+      - name: run_cmake_build
+        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
+      - name: compress
+        run: tar zcvf rtl-sdr_build_ubuntu_20.04-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: ubuntu_20_04_build
+          path: rtl-sdr_build_ubuntu_20.04-amd64.tar.gz
+
+    build_macos_latest:
+      runs-on: macos-latest
+
+      steps:
+      - uses: actions/checkout@v2
+      #- name: reinstall libusb
+      #  run: brew reinstall libusb
+      - name: run_cmake_build
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos_intel
+      - name: compress
+        run: tar zcvf rtl-sdr_build_macos_intel-latest.tar.gz --directory=build rtl-sdr_build_macos_intel
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos_latest_build
+          path: rtl-sdr_build_macos_intel-latest.tar.gz
+
+    build_macos_11:
+      runs-on: macos-11
+
+      steps:
+      - uses: actions/checkout@v2
+      #- name: reinstall libusb
+      #  run: brew reinstall libusb
+      - name: run_cmake_build
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos_intel
+      - name: compress
+        run: tar zcvf rtl-sdr_build_macos_11_intel.tar.gz --directory=build rtl-sdr_build_macos_intel
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos_11_build
+          path: rtl-sdr_build_macos_11_intel.tar.gz
+
+    create_archive:
+      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_20_04', 'build_macos_latest', 'build_macos_11']
+      runs-on: ubuntu-latest
+
+      steps:
+      - name: Extract All Builds
+        uses: actions/download-artifact@v3
+
+      - name: Create Archive
+        run: >
+          mkdir rtl-sdr_all && 
+          mv ubuntu_latest_build/rtl-sdr_build_ubuntu_latest-amd64.tar.gz rtl-sdr_all/ && 
+          mv ubuntu_20_04_build/rtl-sdr_build_ubuntu_20.04-amd64.tar.gz rtl-sdr_all/ && 
+          mv macos_latest_build/rtl-sdr_build_macos_intel-latest.tar.gz rtl-sdr_all/ && 
+          mv macos_11_build/rtl-sdr_build_macos_11_intel.tar.gz rtl-sdr_all/
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: rtl-sdr_all
+          path: rtl-sdr_all/
+
+    update_nightly_release:
+      needs: [create_archive]
+      runs-on: ubuntu-latest
+      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      steps:
+      - name: Extract All Builds
+        uses: actions/download-artifact@v3
+
+      - name: Update Nightly
+        run: gh release upload nightly rtl-sdr_all/* -R ${{github.repository}} --clobber
