@@ -175,6 +175,7 @@ enum rtlsdr_tuner {
 	RTLSDR_TUNER_FC0012,
 	RTLSDR_TUNER_FC0013,
 	RTLSDR_TUNER_FC2580,
+	RTLSDR_TUNER_MAX2112,
 	RTLSDR_TUNER_R820T,
 	RTLSDR_TUNER_R828D
 };
@@ -390,6 +391,21 @@ RTLSDR_API int rtlsdr_read_async(rtlsdr_dev_t *dev,
  * \return 0 on success
  */
 RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
+
+RTLSDR_API uint32_t rtlsdr_get_tuner_clock(void *dev);
+
+// expose existing I2C communication functions:
+RTLSDR_API void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on);
+RTLSDR_API uint8_t rtlsdr_i2c_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg);
+RTLSDR_API int rtlsdr_i2c_write_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg, uint8_t val);
+
+// expose existing GPIO functions:
+RTLSDR_API void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
+RTLSDR_API void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio);
+
+// TODO: - add GPIO read/input functions
+RTLSDR_API uint8_t rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio);
+RTLSDR_API void rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio);
 
 /*!
  * Enable or disable (the bias tee on) GPIO PIN 0. (Works for rtl-sdr.com v3 dongles)
