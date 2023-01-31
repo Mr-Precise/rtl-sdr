@@ -2,9 +2,9 @@ name: rtl-sdr CI cmake build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, devel ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, devel ]
 
 env:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
