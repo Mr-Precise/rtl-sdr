@@ -71,6 +71,8 @@ endif()
 find_package(Threads)
 find_package(PkgConfig)
 
+include(FindMath)
+
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)
 else()
