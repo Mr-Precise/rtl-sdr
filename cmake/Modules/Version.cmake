@@ -35,7 +35,7 @@ find_package(Git QUIET)
 if(GIT_FOUND)
     message(STATUS "Extracting version information from git describe...")
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} describe --always --abbrev=4 --long
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
         OUTPUT_VARIABLE GIT_DESCRIBE OUTPUT_STRIP_TRAILING_WHITESPACE
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
