@@ -44,8 +44,8 @@ include(GenerateExportHeader)
 include(CMakePackageConfigHelpers)
 
 # Set the version information here
-set(VERSION_INFO_MAJOR_VERSION 2022) # increment major on api compatibility changes
-set(VERSION_INFO_MINOR_VERSION 12) # increment minor on feature-level changes
+set(VERSION_INFO_MAJOR_VERSION 2023) # increment major on api compatibility changes
+set(VERSION_INFO_MINOR_VERSION 2) # increment minor on feature-level changes
 set(VERSION_INFO_PATCH_VERSION git) # increment patch for bug fixes and docs
 include(Version) # setup version info
 
@@ -71,6 +71,8 @@ endif()
 ########################################################################
 find_package(Threads)
 find_package(PkgConfig)
+
+include(FindMath)
 
 if(PKG_CONFIG_FOUND)
     pkg_check_modules(LIBUSB libusb-1.0 IMPORTED_TARGET)

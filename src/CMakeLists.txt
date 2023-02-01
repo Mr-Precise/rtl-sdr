@@ -19,8 +19,8 @@
 # Setup shared library variant
 ########################################################################
 add_library(rtlsdr SHARED librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
-target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
+  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c  tuner_r82xx.c)
+target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
 if(APPLE)
   target_link_directories(rtlsdr PUBLIC ${LIBUSB_LIBRARY_DIRS})
 endif(APPLE)
@@ -43,7 +43,7 @@ generate_export_header(rtlsdr)
 # Setup static library variant
 ########################################################################
 add_library(rtlsdr_static STATIC librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_r82xx.c)
+  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c  tuner_r82xx.c)
   target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -61,7 +61,7 @@ generate_export_header(rtlsdr_static)
 ########################################################################
 # Set up Windows DLL resource files
 ########################################################################
-IF(MSVC)
+IF(MSVC OR MINGW)
     include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
 
     configure_file(
@@ -70,7 +70,7 @@ IF(MSVC)
     @ONLY)
     target_sources(rtlsdr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
     target_sources(rtlsdr_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-ENDIF(MSVC)
+ENDIF(MSVC OR MINGW)
 
 ########################################################################
 # Setup libraries used in executables
