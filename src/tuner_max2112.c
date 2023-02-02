@@ -29,7 +29,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#ifndef _WIN32
 #include <unistd.h>
+#else
+#include <windows.h>
+#endif
 
 #include "rtlsdr_i2c.h"
 #include "tuner_max2112.h"

@@ -5,7 +5,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <unistd.h>
+#else
+#include <windows.h>
+#endif
 #include <stdint.h>
 #include <math.h>
 #include "rtl-sdr.h"
@@ -29,12 +33,13 @@ uint16_t movingAverageValues[MOVING_AVERAGE_MAX];
 uint16_t movingAverageBuffInc = 0;
 
 void calcCurrMovingAverage(uint16_t val) {
-	
+
 	// movingAverageValue += val;
 
-	if(movingAverageCount > MOVING_AVERAGE_MAX) {
+	if (movingAverageCount > MOVING_AVERAGE_MAX) {
 		movingAverageValue -= movingAverageValues[movingAverageBuffInc];
-	} else {
+	}
+	else {
 		movingAverageCount++;
 	}
 	movingAverageValues[movingAverageBuffInc] = val;
@@ -43,7 +48,7 @@ void calcCurrMovingAverage(uint16_t val) {
 
 	movingAverageBuffInc++;
 
-	if(movingAverageBuffInc >= MOVING_AVERAGE_MAX) {
+	if (movingAverageBuffInc >= MOVING_AVERAGE_MAX) {
 		movingAverageBuffInc = 0;
 	}
 
@@ -59,69 +64,71 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 	uint16_t currAmData = 0;
 
 	uint16_t buffAvg = 0;
-	int i = 0;
-	while(i < (len)) {
-		
+	uint32_t i = 0;
+	while (i < (len)) {
+
 		currAmData = amData[i];
 		calcCurrMovingAverage(currAmData);
 
 		// printf("Curr am: %04x %04x - %d - %d\n",(currAmData),currAverage,currAmData > (currAverage*0.25),i);
 
-		uint8_t readerThreshold = (currAmData > (currAverage*0.25));
-		uint8_t tagThreshold = i>0 && (currAmData > (amData[i-1]*1.05));
+		uint8_t readerThreshold = (currAmData > (currAverage * 0.25));
+		uint8_t tagThreshold = i > 0 && (currAmData > (amData[i - 1] * 1.05));
 
 		// handle state
-		if(tagThreshold == 1) {
+		if (tagThreshold == 1) {
 			// printf("FOUND THRESH\n");
-		} else if(readerThreshold == 0) {
+		}
+		else if (readerThreshold == 0) {
 			// printf("Got down threshold, trying SOF\n");
 			// escape possible wrong output - make more accurate later
 			i += 2;
 
 			uint8_t lastReaderMask = 0xff;
 
-			uint8_t bits[READER_BUFFER_MAX_SIZE*8];
+			uint8_t bits[READER_BUFFER_MAX_SIZE * 8];
 			uint8_t packets[READER_BUFFER_MAX_SIZE];
 
-			memset(packets,0,READER_BUFFER_MAX_SIZE);
+			memset(packets, 0, READER_BUFFER_MAX_SIZE);
 
 			uint32_t bitCount = 0;
 			uint8_t done = 0;
-			while(done == 0) {
+			while (done == 0) {
 
 				uint8_t readerMask = 0x00;
 
 				// i += 4;
-				for(int j = 0 ; j < 4 ; j++) {
+				for (int j = 0; j < 4; j++) {
 
-					readerThreshold = (amData[i] > (currAverage*0.25));
+					readerThreshold = (amData[i] > (currAverage * 0.25));
 
-					readerMask <<=1;
+					readerMask <<= 1;
 					readerMask |= readerThreshold;
 					i += 4;
 				}
 
 				// process modified miller
-				switch(readerMask) {
-					case 0x07:
+				switch (readerMask) {
+				case 0x07:
 
+					bits[bitCount] = 0;
+					break;
+				case 0x0f:
+
+					if (lastReaderMask == 0x0d) {
 						bits[bitCount] = 0;
-						break;
-					case 0x0f:
-
-						if(lastReaderMask == 0x0d) {
-							bits[bitCount] = 0;
-						} else {
-							done = 1;
-						}
-
-						break;
-					case 0x0d:
-						bits[bitCount] = 1;
-						break;
-					default:
+					}
+					else {
 						done = 1;
-						break;
+					}
+
+					break;
+				case 0x0d:
+					bits[bitCount] = 1;
+					break;
+				default:
+					done = 1;
+					break;
 				}
 
 				bitCount++;
@@ -136,18 +143,18 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 			uint8_t parityInc = 0;
 			uint8_t bit = 0;
 			uint16_t size = 0;
-			for(int j = 1 ; j < bitCount ; j++) {
+			for (int j = 1; j < bitCount; j++) {
 
-				if(bits[j] == 1) {
-					packets[size] |= (1<<bit);
+				if (bits[j] == 1) {
+					packets[size] |= (1 << bit);
 				}
-				
+
 				// printf("Bit: %d %01x - %02x\n",j,bits[j],packets[0]);
 
 				parityInc++;
 				bit++;
 
-				if(parityInc >= 8) {
+				if (parityInc >= 8) {
 					j++;
 					size++;
 					parityInc = 0;
@@ -155,11 +162,11 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 				}
 			}
 
-			if(bitCount >= 7) {
+			if (bitCount >= 7) {
 
-				printf("%08x %d RD: ",packetInc,currAverage);
-				for(int k = 0 ; k < size ; k++) {
-					printf("%02x ",packets[k]);
+				printf("%08x %d RD: ", packetInc, currAverage);
+				for (int k = 0; k < size; k++) {
+					printf("%02x ", packets[k]);
 				}
 				printf("\n");
 				/*
@@ -187,21 +194,21 @@ int abs8(int x) {
 }
 void computeSquares() {
 	int i, j;
-	for (i=0; i<256; i++) {
+	for (i = 0; i < 256; i++) {
 		j = abs8(i);
-		squares[i] = (uint16_t)(j*j);
+		squares[i] = (uint16_t)(j * j);
 	}
 }
 
-void buffCallback(unsigned char *buf, uint32_t len, void *ctx) {
+void buffCallback(unsigned char* buf, uint32_t len, void* ctx) {
 
 	// process output
 	uint16_t demodAM[RECEIVE_BUFF_SIZE];
-	for(int i = 0 ; i < len ; i+= 2) {
-		demodAM[i/2] = squares[buf[i]] + squares[buf[i+1]];
+	for (uint32_t i = 0; i < len; i += 2) {
+		demodAM[i / 2] = squares[buf[i]] + squares[buf[i + 1]];
 	}
 
-	parseAmData(demodAM,len/2);
+	parseAmData(demodAM, len / 2);
 
 }
 // The code was removed due to non-functionality in Windows OS
@@ -220,7 +227,7 @@ void buffCallback(unsigned char *buf, uint32_t len, void *ctx) {
 // 	// get max buffer size
 // 	while(inc < BUFF_SIZE) {
 // 		float amVal = squares[buffData[inc]] + squares[buffData[inc+1]];
-		
+
 // 		if(amVal > largestVal) {
 // 			largestVal = amVal;
 // 		}
@@ -230,7 +237,7 @@ void buffCallback(unsigned char *buf, uint32_t len, void *ctx) {
 
 // 	inc = 0;
 // 	while(inc < BUFF_SIZE) {
-	
+
 // 		for(int j = 0 ; j < (4096/4) ; j++) {
 
 // 			float amVal = squares[buffData[inc]] + squares[buffData[inc+1]];
@@ -252,7 +259,7 @@ uint16_t* amData;
 
 int main(int argc, char** argv) {
 
-	memset(movingAverageValues,0x00,MOVING_AVERAGE_MAX);
+	memset(movingAverageValues, 0x00, MOVING_AVERAGE_MAX);
 	computeSquares();
 
 	// sample data
@@ -270,7 +277,7 @@ int main(int argc, char** argv) {
 	// get some rtlsdr data
 	int ret = rtlsdr_open(&dev, 0);
 
-	if(ret < 0) {
+	if (ret < 0) {
 		printf("RTLSDR Open failed\n");
 		return 1;
 	}
@@ -282,7 +289,7 @@ int main(int argc, char** argv) {
 
 	// get highest gain
 	gainCount = rtlsdr_get_tuner_gains(dev, allGains);
-	rtlsdr_set_tuner_gain(dev, allGains[gainCount-1]);
+	rtlsdr_set_tuner_gain(dev, allGains[gainCount - 1]);
 
 	rtlsdr_set_center_freq(dev, 27.12e6);
 
@@ -295,7 +302,7 @@ int main(int argc, char** argv) {
 		RECEIVE_BUFF_SIZE
 	);
 
-	while(1);
+	while (1);
 
 	// uint16_t amVal = squares[buffData[inc]] + squares[buffData[inc+1]];
 
