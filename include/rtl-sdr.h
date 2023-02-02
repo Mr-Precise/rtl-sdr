@@ -392,6 +392,16 @@ RTLSDR_API int rtlsdr_read_async(rtlsdr_dev_t *dev,
  */
 RTLSDR_API int rtlsdr_cancel_async(rtlsdr_dev_t *dev);
 
+/*!
+ * Read from the remote control (RC) infrared (IR) sensor
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param buf buffer to write IR signal (MSB=pulse/space, 7LSB=duration*20usec), recommended 128-bytes
+ * \param buf_len size of buf
+ * \return 0 if no signal, >0 number of bytes written into buf, <0 for error
+ */
+RTLSDR_API int rtlsdr_ir_query(rtlsdr_dev_t *dev, uint8_t *buf, size_t buf_len);
+
 RTLSDR_API uint32_t rtlsdr_get_tuner_clock(void *dev);
 
 // expose existing I2C communication functions:

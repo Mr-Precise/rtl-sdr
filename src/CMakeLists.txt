@@ -19,7 +19,7 @@
 # Setup shared library variant
 ########################################################################
 add_library(rtlsdr SHARED librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c  tuner_r82xx.c)
+  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c tuner_r82xx.c)
 target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
 if(APPLE)
   target_link_directories(rtlsdr PUBLIC ${LIBUSB_LIBRARY_DIRS})
@@ -43,7 +43,7 @@ generate_export_header(rtlsdr)
 # Setup static library variant
 ########################################################################
 add_library(rtlsdr_static STATIC librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c  tuner_r82xx.c)
+  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c tuner_r82xx.c)
   target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -53,8 +53,8 @@ target_include_directories(rtlsdr_static PUBLIC
   )
 set_property(TARGET rtlsdr_static APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 if(NOT WIN32)
-# Force same library filename for static and shared variants of the library
-set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
+  # Force same library filename for static and shared variants of the library
+  set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
 endif()
 generate_export_header(rtlsdr_static)
 
@@ -81,12 +81,12 @@ add_library(convenience_static STATIC
 target_include_directories(convenience_static
   PRIVATE ${CMAKE_SOURCE_DIR}/include)
 if(WIN32)
-add_library(libgetopt_static STATIC
+  add_library(libgetopt_static STATIC
     getopt/getopt.c
-)
-target_link_libraries(convenience_static
+  )
+  target_link_libraries(convenience_static
     rtlsdr
-)
+  )
 endif()
 
 ########################################################################
@@ -96,13 +96,14 @@ add_executable(rtl_sdr rtl_sdr.c)
 add_executable(rtl_tcp rtl_tcp.c)
 add_executable(rtl_test rtl_test.c)
 add_executable(rtl_fm rtl_fm.c)
+add_executable(rtl_ir rtl_ir.c)
 add_executable(rtl_eeprom rtl_eeprom.c)
 add_executable(rtl_adsb rtl_adsb.c)
 add_executable(rtl_power rtl_power.c)
 add_executable(rtl_biast rtl_biast.c)
 add_executable(rtl_nfc rtl_nfc.c)
 
-set(INSTALL_TARGETS rtlsdr rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
+set(INSTALL_TARGETS rtlsdr rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
 
 target_link_libraries(rtl_sdr rtlsdr convenience_static
     ${LIBUSB_LIBRARIES}
@@ -117,6 +118,10 @@ target_link_libraries(rtl_test rtlsdr convenience_static
     ${CMAKE_THREAD_LIBS_INIT}
 )
 target_link_libraries(rtl_fm rtlsdr convenience_static
+    ${LIBUSB_LIBRARIES}
+    ${CMAKE_THREAD_LIBS_INIT}
+)
+target_link_libraries(rtl_ir rtlsdr convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
@@ -149,35 +154,38 @@ if(MINGW)
 endif()
 
 if(UNIX)
-target_link_libraries(rtl_fm m)
-target_link_libraries(rtl_adsb m)
-target_link_libraries(rtl_power m)
+  target_link_libraries(rtl_fm ${MATH_LIBRARIES})
+  target_link_libraries(rtl_ir ${MATH_LIBRARIES})
+  target_link_libraries(rtl_adsb ${MATH_LIBRARIES})
+  target_link_libraries(rtl_power ${MATH_LIBRARIES})
 if(APPLE OR CMAKE_SYSTEM MATCHES "OpenBSD" OR ANDROID)
-    target_link_libraries(rtl_test m)
+  target_link_libraries(rtl_test ${MATH_LIBRARIES})
 else()
-    target_link_libraries(rtl_test m rt)
+  target_link_libraries(rtl_test ${MATH_LIBRARIES} rt)
 endif()
 endif()
 
 if(WIN32)
-target_link_libraries(rtl_sdr libgetopt_static)
-target_link_libraries(rtl_tcp ws2_32 libgetopt_static)
-target_link_libraries(rtl_test libgetopt_static)
-target_link_libraries(rtl_fm libgetopt_static)
-target_link_libraries(rtl_eeprom libgetopt_static)
-target_link_libraries(rtl_adsb libgetopt_static)
-target_link_libraries(rtl_power libgetopt_static)
-target_link_libraries(rtl_biast libgetopt_static)
-target_link_libraries(rtl_nfc libgetopt_static)
-set_property(TARGET rtl_sdr APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_tcp APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_test APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_fm APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_eeprom APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_adsb APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_power APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_biast APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-set_property(TARGET rtl_nfc APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  target_link_libraries(rtl_sdr libgetopt_static)
+  target_link_libraries(rtl_tcp ws2_32 libgetopt_static)
+  target_link_libraries(rtl_test libgetopt_static)
+  target_link_libraries(rtl_fm libgetopt_static)
+  target_link_libraries(rtl_ir libgetopt_static)
+  target_link_libraries(rtl_eeprom libgetopt_static)
+  target_link_libraries(rtl_adsb libgetopt_static)
+  target_link_libraries(rtl_power libgetopt_static)
+  target_link_libraries(rtl_biast libgetopt_static)
+  target_link_libraries(rtl_nfc libgetopt_static)
+  set_property(TARGET rtl_sdr APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_tcp APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_test APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_fm APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_ir APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_eeprom APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_adsb APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_power APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_biast APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+  set_property(TARGET rtl_nfc APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 endif()
 ########################################################################
 # Install built library files & utilities
@@ -188,6 +196,6 @@ install(TARGETS rtlsdr EXPORT RTLSDR-export
 install(TARGETS rtlsdr_static EXPORT RTLSDR-export
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dylib file
   )
-install(TARGETS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc
+install(TARGETS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc
   DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
