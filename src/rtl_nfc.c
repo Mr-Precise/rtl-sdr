@@ -207,7 +207,8 @@ void buffCallback(unsigned char* buf, uint32_t len, void* ctx) {
 
 	// process output
 	uint16_t demodAM[RECEIVE_BUFF_SIZE];
-	for (uint32_t i = 0; i < len; i += 2) {
+	uint32_t i;
+	for (i = 0; i < len; i += 2) {
 		demodAM[i / 2] = squares[buf[i]] + squares[buf[i + 1]];
 	}
 
