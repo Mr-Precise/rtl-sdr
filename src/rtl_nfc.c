@@ -98,7 +98,8 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 				uint8_t readerMask = 0x00;
 
 				// i += 4;
-				for (int j = 0; j < 4; j++) {
+				int j;
+				for (j = 0; j < 4; j++) {
 
 					readerThreshold = (amData[i] > (currAverage * 0.25));
 
@@ -143,7 +144,8 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 			uint8_t parityInc = 0;
 			uint8_t bit = 0;
 			uint16_t size = 0;
-			for (int j = 1; j < bitCount; j++) {
+			int j;
+			for (j = 1; j < bitCount; j++) {
 
 				if (bits[j] == 1) {
 					packets[size] |= (1 << bit);
@@ -165,7 +167,8 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 			if (bitCount >= 7) {
 
 				printf("%08x %d RD: ", packetInc, currAverage);
-				for (int k = 0; k < size; k++) {
+				int k;
+				for (k = 0; k < size; k++) {
 					printf("%02x ", packets[k]);
 				}
 				printf("\n");
