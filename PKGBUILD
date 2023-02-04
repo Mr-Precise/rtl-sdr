@@ -1,20 +1,22 @@
 # Maintainer: Precise
+
 pkgname=rtl-sdr-exp-git
 pkgrel=1
-pkgver=v2022.6.r0.g71aafcc
-epoch=1
-pkgdesc="Turns your Realtek RTL2832 based DVB dongle into a SDR receiver. Experimental R820T and R820T2 rtl-sdr driver that tunes down to 13 mhz or lower. (From my experiments up to 3.4 Mhz on R820T2)."
-arch=('i686' 'x86_64' 'aarch64')
+pkgver=v2023.2.0.fc3f213
+pkgdesc="Turns your Realtek RTL2832 based DVB dongle into a SDR receiver. Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 mhz or lower. (From my experiments up to 3.4 Mhz on R820T2)."
+arch=('i686' 'x86_64' 'armv7h' 'aarch64')
 url="https://github.com/Mr-Precise/rtl-sdr"
 license=('GPL2')
-depends=('libusb')
+depends=('libusb>=1.0')
 makedepends=('git' 'cmake')
-provides=('rtl-sdr')
+provides=('rtl-sdr' 'rtl-sdr-git')
+conflicts=('rtl-sdr' 'rtl-sdr-git')
+options=('staticlibs')
 source=('git+https://github.com/Mr-Precise/rtl-sdr.git')
 
 pkgver() {
   cd "${srcdir}/rtl-sdr"
-  git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g'
+  printf "%s.%s" "$(git describe --tags --abbrev=0)" "$(git rev-parse --short HEAD)"
 }
 
 build() {
@@ -22,7 +24,8 @@ build() {
   mkdir -p build
   cd build
   cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr \
-    -DDETACH_KERNEL_DRIVER=ON -DENABLE_ZEROCOPY=ON -Wno-dev ../
+    -DDETACH_KERNEL_DRIVER=ON \
+    -DENABLE_ZEROCOPY=ON -Wno-dev ../
   make
 }
 
