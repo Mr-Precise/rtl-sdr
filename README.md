@@ -4,8 +4,8 @@ Discord support server:
 [![Join Discord server!](https://invidget.switchblade.xyz/HP99wM4yNR)](http://discord.gg/HP99wM4yNR)  
 ![GitHub all releases](https://img.shields.io/github/downloads/Mr-Precise/rtl-sdr/total?color=%23477CE0&label=Total%20downloads%3A&style=for-the-badge)  
 
-Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 mhz or lower.  
-(From my experiments up to 3.4 Mhz on R820T2)
+Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.  
+(From my experiments up to 3.4 MHz on R820T2)
 
 2017-2018: Transferring/Backporting new features from new versions and fixes...  
 2021: Project is now using only cmake build system.  
