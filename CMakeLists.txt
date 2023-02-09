@@ -122,6 +122,9 @@ else (INSTALL_UDEV_RULES)
     message (STATUS "Udev rules not being installed, install them with -DINSTALL_UDEV_RULES=ON")
 endif (INSTALL_UDEV_RULES)
 
+########################################################################
+# Detach kernel driver
+########################################################################
 option(DETACH_KERNEL_DRIVER "Detach kernel driver if loaded" OFF)
 if (DETACH_KERNEL_DRIVER)
     message (STATUS "Building with kernel driver detaching enabled")
@@ -130,6 +133,9 @@ else (DETACH_KERNEL_DRIVER)
     message (STATUS "Building with kernel driver detaching disabled, use -DDETACH_KERNEL_DRIVER=ON to enable")
 endif (DETACH_KERNEL_DRIVER)
 
+########################################################################
+# usbfs zero-copy support
+########################################################################
 option(ENABLE_ZEROCOPY "Enable usbfs zero-copy support" OFF)
 if (ENABLE_ZEROCOPY)
     message (STATUS "Building with usbfs zero-copy support enabled")
@@ -138,6 +144,27 @@ else (ENABLE_ZEROCOPY)
     message (STATUS "Building with usbfs zero-copy support disabled, use -DENABLE_ZEROCOPY=ON to enable")
 endif (ENABLE_ZEROCOPY)
 
+########################################################################
+# rtl-apps link library options
+########################################################################
+option(LINK_RTL_APPS_WITH_STATIC_LIB "Link statilally rtl-apps with librtlsdr" OFF)
+if(LINK_RTL_APPS_WITH_STATIC_LIB)
+    message(STATUS "ENABLED statilally link rtl-apps with librtlsdr")
+else(LINK_RTL_APPS_WITH_STATIC_LIB)
+    message(STATUS "DISABLED rtl-apps statically link with librtlsdr")
+endif(LINK_RTL_APPS_WITH_STATIC_LIB)
+
+########################################################################
+# install static lib options
+########################################################################
+option(INSTALL_STATIC_LIB "Install static librtlsdr" ON)
+if(INSTALL_STATIC_LIB)
+    message(STATUS "ENABLED install static librtlsdr (default ON)")
+else(INSTALL_STATIC_LIB)
+    message(STATUS "DISABLED lnstall static librtlsdr")
+endif(INSTALL_STATIC_LIB)
+
+########################################################################
 # Install public header files
 ########################################################################
 install(FILES
@@ -145,8 +172,6 @@ install(FILES
     include/rtl-sdr_export.h
     DESTINATION include
 )
-
-########################################################################
 
 ########################################################################
 # Add subdirectories

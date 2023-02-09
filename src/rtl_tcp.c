@@ -535,6 +535,7 @@ int main(int argc, char **argv)
 	pthread_cond_init(&cond, NULL);
 	pthread_cond_init(&exit_cond, NULL);
 
+	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags  = AI_PASSIVE; /* Server mode. */
 	hints.ai_family = PF_UNSPEC;  /* IPv4 or IPv6. */
 	hints.ai_socktype = SOCK_STREAM;

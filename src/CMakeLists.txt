@@ -16,35 +16,46 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ########################################################################
+# rtl-sdr sources
+########################################################################
+file(GLOB rtlsdr_SOURCES
+    librtlsdr.c
+    tuner_e4k.c
+    tuner_fc0012.c
+    tuner_fc0013.c
+    tuner_fc2580.c
+    tuner_max2112.c
+    tuner_r82xx.c)
+list(SORT rtlsdr_SOURCES)
+
+########################################################################
 # Setup shared library variant
 ########################################################################
-add_library(rtlsdr SHARED librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c tuner_r82xx.c)
-target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
+add_library(rtlsdr_shared SHARED ${rtlsdr_SOURCES})
+target_link_libraries(rtlsdr_shared ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
 if(APPLE)
-  target_link_directories(rtlsdr PUBLIC ${LIBUSB_LIBRARY_DIRS})
+  target_link_directories(rtlsdr_shared PUBLIC ${LIBUSB_LIBRARY_DIRS})
 endif(APPLE)
 
-target_include_directories(rtlsdr PUBLIC
+target_include_directories(rtlsdr_shared PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
   )
-set_target_properties(rtlsdr PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
-set_target_properties(rtlsdr PROPERTIES OUTPUT_NAME rtlsdr)
+set_target_properties(rtlsdr_shared PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
+set_target_properties(rtlsdr_shared PROPERTIES OUTPUT_NAME rtlsdr)
 # set_target_properties(rtlsdr PROPERTIES SOVERSION ${MAJOR_VERSION})
 # Very crutch fix for compatibility with 0.x.x versions
-set_target_properties(rtlsdr PROPERTIES SOVERSION "0")
-set_target_properties(rtlsdr PROPERTIES VERSION ${LIBVER})
-generate_export_header(rtlsdr)
+set_target_properties(rtlsdr_shared PROPERTIES SOVERSION "0")
+set_target_properties(rtlsdr_shared PROPERTIES VERSION ${LIBVER})
+generate_export_header(rtlsdr_shared)
 
 ########################################################################
 # Setup static library variant
 ########################################################################
-add_library(rtlsdr_static STATIC librtlsdr.c
-  tuner_e4k.c tuner_fc0012.c tuner_fc0013.c tuner_fc2580.c tuner_max2112.c tuner_r82xx.c)
-  target_link_libraries(rtlsdr ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY})
+add_library(rtlsdr_static STATIC ${rtlsdr_SOURCES})
+  target_link_libraries(rtlsdr_static ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
@@ -61,16 +72,26 @@ generate_export_header(rtlsdr_static)
 ########################################################################
 # Set up Windows DLL resource files
 ########################################################################
-IF(MSVC OR MINGW)
+if(MSVC OR MINGW)
     include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
 
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
         ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
     @ONLY)
-    target_sources(rtlsdr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-    target_sources(rtlsdr_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-ENDIF(MSVC OR MINGW)
+    list(APPEND ${rtlsdr_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+    # target_sources(rtlsdr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+    # target_sources(rtlsdr_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+endif(MSVC OR MINGW)
+
+########################################################################
+# link apps settings
+########################################################################
+if(LINK_RTL_APPS_WITH_STATIC_LIB)
+    set(RTL_APP_SELECT_LIB rtlsdr_static)
+else()
+    set(RTL_APP_SELECT_LIB rtlsdr_shared)
+endif()
 
 ########################################################################
 # Setup libraries used in executables
@@ -80,12 +101,13 @@ add_library(convenience_static STATIC
 )
 target_include_directories(convenience_static
   PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 if(WIN32)
   add_library(libgetopt_static STATIC
     getopt/getopt.c
   )
-  target_link_libraries(convenience_static
-    rtlsdr
+target_link_libraries(convenience_static
+  ${RTL_APP_SELECT_LIB}
   )
 endif()
 
@@ -103,45 +125,45 @@ add_executable(rtl_power rtl_power.c)
 add_executable(rtl_biast rtl_biast.c)
 add_executable(rtl_nfc rtl_nfc.c)
 
-set(INSTALL_TARGETS rtlsdr rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
+set(INSTALL_TARGETS rtlsdr_shared rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
 
-target_link_libraries(rtl_sdr rtlsdr convenience_static
+target_link_libraries(rtl_sdr ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_tcp rtlsdr convenience_static
+target_link_libraries(rtl_tcp ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_test rtlsdr convenience_static
+target_link_libraries(rtl_test ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_fm rtlsdr convenience_static
+target_link_libraries(rtl_fm ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_ir rtlsdr convenience_static
+target_link_libraries(rtl_ir ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_eeprom rtlsdr convenience_static
+target_link_libraries(rtl_eeprom ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_adsb rtlsdr convenience_static
+target_link_libraries(rtl_adsb ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_power rtlsdr convenience_static
+target_link_libraries(rtl_power ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_biast rtlsdr convenience_static
+target_link_libraries(rtl_biast ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
-target_link_libraries(rtl_nfc rtlsdr convenience_static
+target_link_libraries(rtl_nfc ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )
@@ -158,10 +180,13 @@ if(UNIX)
   target_link_libraries(rtl_ir ${MATH_LIBRARIES})
   target_link_libraries(rtl_adsb ${MATH_LIBRARIES})
   target_link_libraries(rtl_power ${MATH_LIBRARIES})
+if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
+  target_link_libraries(rtl_tcp network)
 if(APPLE OR CMAKE_SYSTEM MATCHES "OpenBSD" OR ANDROID)
   target_link_libraries(rtl_test ${MATH_LIBRARIES})
 else()
-  target_link_libraries(rtl_test ${MATH_LIBRARIES} rt)
+  # target_link_libraries(rtl_test ${MATH_LIBRARIES} rt)
+endif()
 endif()
 endif()
 
@@ -190,12 +215,14 @@ endif()
 ########################################################################
 # Install built library files & utilities
 ########################################################################
-install(TARGETS rtlsdr EXPORT RTLSDR-export
+install(TARGETS rtlsdr_shared EXPORT RTLSDR-export
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dylib file
   )
-install(TARGETS rtlsdr_static EXPORT RTLSDR-export
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dylib file
-  )
+  if(INSTALL_STATIC_LIB)
+    install(TARGETS rtlsdr_static EXPORT RTLSDR-export
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .a/.lib file
+    )
+  endif()
 install(TARGETS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc
   DESTINATION ${CMAKE_INSTALL_BINDIR}
   )
