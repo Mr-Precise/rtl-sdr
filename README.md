@@ -46,6 +46,8 @@ run cmake and start compilation. cmake will accept some options, e.g.
 * `-DINSTALL_UDEV_RULES=ON`, default is `OFF`
 * `-DDETACH_KERNEL_DRIVER=ON`, default is `OFF`
 * `-DENABLE_ZEROCOPY=ON`, default is `OFF`
+* `-DLINK_RTL_APPS_WITH_STATIC_LIB`, default is `OFF`
+* `-DINSTALL_STATIC_LIB`, default is `ON`
 
 all cmake options are optional  
 * `-DCMAKE_INSTALL_PREFIX=/usr` default install prefix on ubuntu.
