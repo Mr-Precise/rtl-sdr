@@ -23,5 +23,5 @@
 install(FILES
     rtl-sdr.h
     rtl-sdr_export.h
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
