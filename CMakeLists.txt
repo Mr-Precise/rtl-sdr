@@ -170,7 +170,7 @@ endif(INSTALL_STATIC_LIB)
 install(FILES
     include/rtl-sdr.h
     include/rtl-sdr_export.h
-    DESTINATION include
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 ########################################################################
@@ -201,8 +201,8 @@ ENDIF(CMAKE_CROSSCOMPILING)
 
 set(prefix "${CMAKE_INSTALL_PREFIX}")
 set(exec_prefix \${prefix})
-set(includedir \${prefix}/include)
-set(libdir \${exec_prefix}/lib)
+set(includedir \${prefix}/${CMAKE_INSTALL_INCLUDEDIR})
+set(libdir \${exec_prefix}/${CMAKE_INSTALL_LIBDIR})
 
 CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/librtlsdr.pc.in

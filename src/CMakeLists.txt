@@ -18,7 +18,7 @@
 ########################################################################
 # rtl-sdr sources
 ########################################################################
-file(GLOB rtlsdr_SOURCES
+set(rtlsdr_SOURCES
     librtlsdr.c
     tuner_e4k.c
     tuner_fc0012.c
@@ -26,12 +26,24 @@ file(GLOB rtlsdr_SOURCES
     tuner_fc2580.c
     tuner_max2112.c
     tuner_r82xx.c)
-list(SORT rtlsdr_SOURCES)
+
+########################################################################
+# Set up Windows DLL resource files
+########################################################################
+if(MSVC OR MINGW)
+  include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
+    ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
+    @ONLY)
+
+  set(librtlsdr_RES ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+endif(MSVC OR MINGW)
 
 ########################################################################
 # Setup shared library variant
 ########################################################################
-add_library(rtlsdr_shared SHARED ${rtlsdr_SOURCES})
+add_library(rtlsdr_shared SHARED ${rtlsdr_SOURCES} ${librtlsdr_RES})
 target_link_libraries(rtlsdr_shared ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
 if(APPLE)
   target_link_directories(rtlsdr_shared PUBLIC ${LIBUSB_LIBRARY_DIRS})
@@ -68,21 +80,6 @@ if(NOT WIN32)
   set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
 endif()
 generate_export_header(rtlsdr_static)
-
-########################################################################
-# Set up Windows DLL resource files
-########################################################################
-if(MSVC OR MINGW)
-    include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
-
-    configure_file(
-        ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
-        ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
-    @ONLY)
-    list(APPEND ${rtlsdr_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-    # target_sources(rtlsdr PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-    # target_sources(rtlsdr_static PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
-endif(MSVC OR MINGW)
 
 ########################################################################
 # link apps settings
