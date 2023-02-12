@@ -67,7 +67,12 @@ generate_export_header(rtlsdr_shared)
 # Setup static library variant
 ########################################################################
 add_library(rtlsdr_static STATIC ${rtlsdr_SOURCES})
-  target_link_libraries(rtlsdr_static ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
+target_link_libraries(rtlsdr_static ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
+if(LINK_RTL_APPS_WITH_STATIC_LIB)
+  if(APPLE)
+    target_link_directories(rtlsdr_static PUBLIC ${LIBUSB_LIBRARY_DIRS})
+  endif(APPLE)
+endif()
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
