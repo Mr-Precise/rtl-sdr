@@ -28,7 +28,7 @@ set(rtlsdr_SOURCES
     tuner_r82xx.c)
 
 ########################################################################
-# Set up Windows DLL resource files
+# Set up Windows DLL/EXE resource files
 ########################################################################
 if(MSVC OR MINGW)
   include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
@@ -37,7 +37,18 @@ if(MSVC OR MINGW)
     ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
     @ONLY)
 
-  set(librtlsdr_RES ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+    configure_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/rtl_apps.rc.in
+      ${CMAKE_CURRENT_BINARY_DIR}/rtl_apps.rc
+      @ONLY)
+  
+    configure_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/icon.ico
+      ${CMAKE_CURRENT_BINARY_DIR}/icon.ico
+      COPYONLY)
+  
+      set(librtlsdr_RES ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc)
+      set(rtl_apps_RES ${CMAKE_CURRENT_BINARY_DIR}/rtl_apps.rc)
 endif(MSVC OR MINGW)
 
 ########################################################################
@@ -67,7 +78,12 @@ generate_export_header(rtlsdr_shared)
 # Setup static library variant
 ########################################################################
 add_library(rtlsdr_static STATIC ${rtlsdr_SOURCES})
-  target_link_libraries(rtlsdr_static ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
+target_link_libraries(rtlsdr_static ${LIBUSB_LIBRARIES} ${THREADS_PTHREADS_LIBRARY} ${MATH_LIBRARIES})
+if(LINK_RTL_APPS_WITH_STATIC_LIB)
+  if(APPLE)
+    target_link_directories(rtlsdr_static PUBLIC ${LIBUSB_LIBRARY_DIRS})
+  endif(APPLE)
+endif()
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
@@ -111,16 +127,16 @@ endif()
 ########################################################################
 # Build utility
 ########################################################################
-add_executable(rtl_sdr rtl_sdr.c)
-add_executable(rtl_tcp rtl_tcp.c)
-add_executable(rtl_test rtl_test.c)
-add_executable(rtl_fm rtl_fm.c)
-add_executable(rtl_ir rtl_ir.c)
-add_executable(rtl_eeprom rtl_eeprom.c)
-add_executable(rtl_adsb rtl_adsb.c)
-add_executable(rtl_power rtl_power.c)
-add_executable(rtl_biast rtl_biast.c)
-add_executable(rtl_nfc rtl_nfc.c)
+add_executable(rtl_sdr rtl_sdr.c ${rtl_apps_RES})
+add_executable(rtl_tcp rtl_tcp.c ${rtl_apps_RES})
+add_executable(rtl_test rtl_test.c ${rtl_apps_RES})
+add_executable(rtl_fm rtl_fm.c ${rtl_apps_RES})
+add_executable(rtl_ir rtl_ir.c ${rtl_apps_RES})
+add_executable(rtl_eeprom rtl_eeprom.c ${rtl_apps_RES})
+add_executable(rtl_adsb rtl_adsb.c ${rtl_apps_RES})
+add_executable(rtl_power rtl_power.c ${rtl_apps_RES})
+add_executable(rtl_biast rtl_biast.c ${rtl_apps_RES})
+add_executable(rtl_nfc rtl_nfc.c ${rtl_apps_RES})
 
 set(INSTALL_TARGETS rtlsdr_shared rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
 
