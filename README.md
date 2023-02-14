@@ -27,7 +27,8 @@ pacman -S cmake libusb
 [Visual Studio](https://visualstudio.microsoft.com/) or MinGW/[msys](https://www.msys2.org/)/[LLVM Clang MinGW](https://github.com/mstorsjo/llvm-mingw) etc...  
 libusb [libusb/releases](https://github.com/libusb/libusb/releases)  
 [pthread-win32 library](https://github.com/GerHobbelt/pthread-win32)  
-[CMake](https://cmake.org/download/)
+[CMake](https://cmake.org/download/)  
+Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
 
 ### macOS
 ```
@@ -46,8 +47,8 @@ run cmake and start compilation. cmake will accept some options, e.g.
 * `-DINSTALL_UDEV_RULES=ON`, default is `OFF`
 * `-DDETACH_KERNEL_DRIVER=ON`, default is `OFF`
 * `-DENABLE_ZEROCOPY=ON`, default is `OFF`
-* `-DLINK_RTL_APPS_WITH_STATIC_LIB`, default is `OFF`
-* `-DINSTALL_STATIC_LIB`, default is `ON`
+* `-DLINK_RTL_APPS_WITH_STATIC_LIB=ON`, default is `OFF`
+* `-DINSTALL_STATIC_LIB=ON`, default is `ON`
 
 all cmake options are optional  
 * `-DCMAKE_INSTALL_PREFIX=/usr` default install prefix on ubuntu.
