@@ -19,7 +19,7 @@ Debian/Ubuntu:
 sudo apt install build-essential cmake git libusb-1.0-0-dev
 ```
 Arch/Manjaro:  
-Note: there is a PKGBUILD file in the repository
+Note: there is a PKGBUILD file in the repository and [AUR](https://aur.archlinux.org/packages/rtl-sdr-exp-git)
 ```
 pacman -S cmake libusb
 ```
@@ -27,7 +27,7 @@ pacman -S cmake libusb
 [Visual Studio](https://visualstudio.microsoft.com/) or MinGW/[msys](https://www.msys2.org/)/[LLVM Clang MinGW](https://github.com/mstorsjo/llvm-mingw) etc...  
 libusb [libusb/releases](https://github.com/libusb/libusb/releases)  
 [pthread-win32 library](https://github.com/GerHobbelt/pthread-win32)  
-[CMake](https://cmake.org/download/)  
+Latest [CMake](https://cmake.org/download/) or [Old CMake](https://github.com/Kitware/CMake/releases/tag/v3.13.4) for 2000/XP  
 Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
 
 ### macOS
@@ -70,7 +70,7 @@ or building a package from a directory
 make install DESTDIR=build_folder_name
 ```
 # Download Release binary builds
-[Latest releases](https://github.com/Mr-Precise/rtl-sdr/releases/latest) builds - for Linux (amd64, i386, amrhf, arm64), macOS intel, Windows: MSVC and MinGW cross-builds, Android,.
+[Latest releases](https://github.com/Mr-Precise/rtl-sdr/releases/latest) builds - for Linux (amd64, i386, amrhf, arm64), macOS intel, Windows: (x86 32/64 + ARM64 MSVC and MinGW cross-builds), Android.
 
 # Download Development binary builds
 
