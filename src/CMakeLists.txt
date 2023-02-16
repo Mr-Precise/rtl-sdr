@@ -31,7 +31,7 @@ set(rtlsdr_SOURCES
 # Set up Windows DLL/EXE resource files
 ########################################################################
 if(MSVC OR MINGW)
-  include(${CMAKE_SOURCE_DIR}/cmake/Modules/Version.cmake)
+  include(${PROJECT_SOURCE_DIR}/cmake/Modules/Version.cmake)
   configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.rc.in
     ${CMAKE_CURRENT_BINARY_DIR}/rtlsdr.rc
@@ -61,7 +61,7 @@ if(APPLE)
 endif(APPLE)
 
 target_include_directories(rtlsdr_shared PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
@@ -85,7 +85,7 @@ if(LINK_RTL_APPS_WITH_STATIC_LIB)
   endif(APPLE)
 endif()
 target_include_directories(rtlsdr_static PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
@@ -113,7 +113,7 @@ add_library(convenience_static STATIC
     convenience/convenience.c
 )
 target_include_directories(convenience_static
-  PRIVATE ${CMAKE_SOURCE_DIR}/include)
+  PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 if(WIN32)
   add_library(libgetopt_static STATIC
