@@ -29,6 +29,13 @@
 #include "rtlsdr_i2c.h"
 #include "tuner_r82xx.h"
 
+// crutch for old or curve OS
+// #ifdef _WIN32
+// #if defined(_MSC_VER) && (_MSC_VER < 1800)
+// #define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
+// #endif
+// #endif
+
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define MHZ(x)		((x)*1000*1000)
 #define KHZ(x)		((x)*1000)
