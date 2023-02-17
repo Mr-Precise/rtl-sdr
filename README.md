@@ -16,7 +16,7 @@ Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC
 ### Linux
 Debian/Ubuntu:
 ```
-sudo apt install build-essential cmake git libusb-1.0-0-dev
+sudo apt install build-essential pkg-config cmake git libusb-1.0-0-dev
 ```
 Arch/Manjaro:  
 Note: there is a PKGBUILD file in the repository and [AUR](https://aur.archlinux.org/packages/rtl-sdr-exp-git)
