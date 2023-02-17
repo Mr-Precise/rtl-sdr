@@ -32,7 +32,7 @@ Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr
 
 ### macOS
 ```
-brew install libusb cmake
+brew install libusb pkg-config cmake
 ```
 ## Clone repo
 
