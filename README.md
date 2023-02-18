@@ -7,6 +7,10 @@ Discord support server:
 Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.  
 (From my experiments up to 3.4 MHz on R820T2)
 
+Realtek RTL2832U based hardware can be used as a cheap SDR (Software-defined radio).  
+This device allows transferring the raw I/Q samples to the your PC/laptop/etc via USB.
+
+History:  
 2017-2018: Transferring/Backporting new features from new versions and fixes...  
 2021: Project is now using only cmake build system.  
 Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC  
@@ -27,7 +31,7 @@ pacman -S cmake libusb
 [Visual Studio](https://visualstudio.microsoft.com/) or MinGW/[msys](https://www.msys2.org/)/[LLVM Clang MinGW](https://github.com/mstorsjo/llvm-mingw) etc...  
 libusb [libusb/releases](https://github.com/libusb/libusb/releases)  
 [pthread-win32 library](https://github.com/GerHobbelt/pthread-win32)  
-Latest [CMake](https://cmake.org/download/) or [Old CMake](https://github.com/Kitware/CMake/releases/tag/v3.13.4) for 2000/XP  
+Latest [CMake](https://cmake.org/download/) or [Old CMake](https://github.com/Kitware/CMake/releases/tag/v3.13.4) for 2003/XP  
 Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
 
 ### macOS
@@ -43,6 +47,7 @@ cd rtl-sdr
 ```
 
 ## Build: linux/macOS
+### Configure:
 run cmake and start compilation. cmake will accept some options, e.g.
 * `-DINSTALL_UDEV_RULES=ON`, default is `OFF`
 * `-DDETACH_KERNEL_DRIVER=ON`, default is `OFF`
@@ -73,7 +78,7 @@ setup into prefix, usually will require `sudo`:
 sudo make install
 sudo ldconfig
 ```
-or build using cmake:
+or build & install using cmake:
 ```
 cmake --build . --config Release --target install
 ```
