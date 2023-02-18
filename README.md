@@ -19,7 +19,7 @@ Debian/Ubuntu:
 sudo apt install build-essential pkg-config cmake git libusb-1.0-0-dev
 ```
 Arch/Manjaro:  
-Note: there is a PKGBUILD file in the repository and [AUR](https://aur.archlinux.org/packages/rtl-sdr-exp-git)
+Note: package has added to the [AUR](https://aur.archlinux.org/packages/rtl-sdr-exp-git), or you can use PKGBUILD.  
 ```
 pacman -S cmake libusb
 ```
@@ -56,7 +56,15 @@ all cmake options are optional
 ```
 mkdir build && cd build
 cmake .. -DINSTALL_UDEV_RULES=ON -DDETACH_KERNEL_DRIVER=ON
+```
+### Build:
+using make utility:
+```
 make -j$(($(nproc) + 1))
+```
+or build using cmake:
+```
+cmake --build . --config Release
 ```
 
 ## install
@@ -65,7 +73,11 @@ setup into prefix, usually will require `sudo`:
 sudo make install
 sudo ldconfig
 ```
-or building a package from a directory
+or build using cmake:
+```
+cmake --build . --config Release --target install
+```
+or if you manually build the package from the directory:
 ```
 make install DESTDIR=build_folder_name
 ```
