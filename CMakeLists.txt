@@ -48,6 +48,7 @@ set(VERSION_INFO_MAJOR_VERSION 2023) # increment major on api compatibility chan
 set(VERSION_INFO_MINOR_VERSION 2) # increment minor on feature-level changes
 set(VERSION_INFO_PATCH_VERSION git) # increment patch for bug fixes and docs
 include(Version) # setup version info
+include(CpackPacking)
 
 ########################################################################
 # Compiler specific setup
@@ -113,11 +114,12 @@ add_custom_target(uninstall
 ########################################################################
 option(INSTALL_UDEV_RULES "Install udev rules for RTL-SDR" OFF)
 if (INSTALL_UDEV_RULES)
+set(UDEV_RULES_PATH "/etc/udev/rules.d" CACHE STRING "Target directory for udev rule installation.")
     install (
         FILES "${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr.rules"
-        DESTINATION "/etc/udev/rules.d"
+        DESTINATION ${UDEV_RULES_PATH}
         COMPONENT "udev"
-        )
+    )
 else (INSTALL_UDEV_RULES)
     message (STATUS "Udev rules not being installed, install them with -DINSTALL_UDEV_RULES=ON")
 endif (INSTALL_UDEV_RULES)
