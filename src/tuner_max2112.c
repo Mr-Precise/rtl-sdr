@@ -38,6 +38,11 @@
 #include "rtlsdr_i2c.h"
 #include "tuner_max2112.h"
 
+#ifdef _WIN32
+#if defined(_MSC_VER) && (_MSC_VER < 1800)
+#define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
+#endif
+#endif
 
 #define DEBUGINFO	0
 

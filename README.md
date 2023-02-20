@@ -7,6 +7,10 @@ Discord support server:
 Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.  
 (From my experiments up to 3.4 MHz on R820T2)
 
+Realtek RTL2832U based hardware can be used as a cheap SDR (Software-defined radio).  
+This device allows transferring the raw I/Q samples to the your PC/laptop/etc via USB.
+
+History:  
 2017-2018: Transferring/Backporting new features from new versions and fixes...  
 2021: Project is now using only cmake build system.  
 Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC  
@@ -16,10 +20,10 @@ Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC
 ### Linux
 Debian/Ubuntu:
 ```
-sudo apt install build-essential cmake git libusb-1.0-0-dev
+sudo apt install build-essential pkg-config cmake git libusb-1.0-0-dev
 ```
 Arch/Manjaro:  
-Note: there is a PKGBUILD file in the repository
+Note: package has added to the [AUR](https://aur.archlinux.org/packages/rtl-sdr-exp-git), or you can use PKGBUILD.  
 ```
 pacman -S cmake libusb
 ```
@@ -27,11 +31,12 @@ pacman -S cmake libusb
 [Visual Studio](https://visualstudio.microsoft.com/) or MinGW/[msys](https://www.msys2.org/)/[LLVM Clang MinGW](https://github.com/mstorsjo/llvm-mingw) etc...  
 libusb [libusb/releases](https://github.com/libusb/libusb/releases)  
 [pthread-win32 library](https://github.com/GerHobbelt/pthread-win32)  
-[CMake](https://cmake.org/download/)
+Latest [CMake](https://cmake.org/download/) or [Old CMake](https://github.com/Kitware/CMake/releases/tag/v3.13.4) for 2003/XP  
+Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
 
 ### macOS
 ```
-brew install libusb cmake
+brew install libusb pkg-config cmake
 ```
 ## Clone repo
 
@@ -42,12 +47,13 @@ cd rtl-sdr
 ```
 
 ## Build: linux/macOS
+### Configure:
 run cmake and start compilation. cmake will accept some options, e.g.
 * `-DINSTALL_UDEV_RULES=ON`, default is `OFF`
 * `-DDETACH_KERNEL_DRIVER=ON`, default is `OFF`
 * `-DENABLE_ZEROCOPY=ON`, default is `OFF`
-* `-DLINK_RTL_APPS_WITH_STATIC_LIB`, default is `OFF`
-* `-DINSTALL_STATIC_LIB`, default is `ON`
+* `-DLINK_RTL_APPS_WITH_STATIC_LIB=ON`, default is `OFF`
+* `-DINSTALL_STATIC_LIB=ON`, default is `ON`
 
 all cmake options are optional  
 * `-DCMAKE_INSTALL_PREFIX=/usr` default install prefix on ubuntu.
@@ -55,7 +61,15 @@ all cmake options are optional
 ```
 mkdir build && cd build
 cmake .. -DINSTALL_UDEV_RULES=ON -DDETACH_KERNEL_DRIVER=ON
+```
+### Build:
+using make utility:
+```
 make -j$(($(nproc) + 1))
+```
+or build using cmake:
+```
+cmake --build . --config Release
 ```
 
 ## install
@@ -64,12 +78,16 @@ setup into prefix, usually will require `sudo`:
 sudo make install
 sudo ldconfig
 ```
-or building a package from a directory
+or build & install using cmake:
+```
+cmake --build . --config Release --target install
+```
+or if you manually build the package from the directory:
 ```
 make install DESTDIR=build_folder_name
 ```
 # Download Release binary builds
-[Latest releases](https://github.com/Mr-Precise/rtl-sdr/releases/latest) builds - for Linux (amd64, i386, amrhf, arm64), macOS intel, Windows: MSVC and MinGW cross-builds, Android,.
+[Latest releases](https://github.com/Mr-Precise/rtl-sdr/releases/latest) builds - for Linux (amd64, i386, amrhf, arm64), macOS intel, Windows: (x86 32/64 + ARM64 MSVC and MinGW cross-builds), Android.
 
 # Download Development binary builds
 

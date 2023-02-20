@@ -43,6 +43,12 @@
 #include "rtl-sdr.h"
 #include "convenience/convenience.h"
 
+#ifdef _WIN32
+#if defined(_MSC_VER) && (_MSC_VER < 1800)
+#define round(x) (x > 0.0 ? floor(x + 0.5): ceil(x - 0.5))
+#endif
+#endif
+
 #define DEFAULT_SAMPLE_RATE		2048000
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define MINIMAL_BUF_LENGTH		512
