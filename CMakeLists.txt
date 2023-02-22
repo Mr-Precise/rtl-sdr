@@ -43,6 +43,12 @@ include(GNUInstallDirs)
 include(GenerateExportHeader)
 include(CMakePackageConfigHelpers)
 
+# Set paths early according to GNUInstallDirs
+set(prefix "${CMAKE_INSTALL_PREFIX}")
+set(exec_prefix \${prefix})
+set(includedir \${prefix}/${CMAKE_INSTALL_INCLUDEDIR})
+set(libdir \${exec_prefix}/${CMAKE_INSTALL_LIBDIR})
+
 # Set the version information here
 set(VERSION_INFO_MAJOR_VERSION 2023) # increment major on api compatibility changes
 set(VERSION_INFO_MINOR_VERSION 2) # increment minor on feature-level changes
@@ -198,11 +204,6 @@ IF(CMAKE_CROSSCOMPILING)
     UNSET(RTLSDR_PC_CFLAGS)
     UNSET(RTLSDR_PC_LIBS)
 ENDIF(CMAKE_CROSSCOMPILING)
-
-set(prefix "${CMAKE_INSTALL_PREFIX}")
-set(exec_prefix \${prefix})
-set(includedir \${prefix}/${CMAKE_INSTALL_INCLUDEDIR})
-set(libdir \${exec_prefix}/${CMAKE_INSTALL_LIBDIR})
 
 CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/librtlsdr.pc.in
