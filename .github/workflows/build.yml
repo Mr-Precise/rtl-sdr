@@ -82,8 +82,42 @@ jobs:
           name: macos_11_build
           path: rtl-sdr_build_macos_11_intel.tar.gz
 
+    build_win_2019_64:
+      runs-on: windows-2019
+
+      steps:
+        - uses: actions/checkout@v3
+
+        - name: Create Build Environment
+          run: cmake -E make_directory ${{runner.workspace}}/build
+
+        - name: Download rtl-sdr build-kit
+          run: Invoke-WebRequest -Uri "https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/download/windows/rtl-sdr-build-kit-2023.2.1.zip" -OutFile ${{runner.workspace}}/rtl-sdr-build-kit-2023.2.1.zip
+
+        - name: Unpack rtl-sdr build-kit
+          run: 7z x ${{runner.workspace}}/rtl-sdr-build-kit-2023.2.1.zip -o"${{runner.workspace}}"
+
+        - name: Apply crutch
+          run: del C:/Strawberry/perl/bin/pkg-config.bat
+
+        - name: Prepare CMake
+          working-directory: ${{runner.workspace}}/build
+          run: cmake "$Env:GITHUB_WORKSPACE" -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build/rtl-sdr-msvc142-Win64 -DLINK_RTL_APPS_WITH_STATIC_LIB=ON -DLIBUSB_INCLUDE_DIRS=${{runner.workspace}}/rtl-sdr-build-kit/libusb/Win64/v142/Release/include/libusb-1.0 -DLIBUSB_LIBRARIES=${{runner.workspace}}/rtl-sdr-build-kit/libusb/Win64/v142/Release/lib/libusb-1.0.lib -DTHREADS_PTHREADS_INCLUDE_DIR=${{runner.workspace}}/rtl-sdr-build-kit/pthread-win32/Win64/Release/include -DTHREADS_PTHREADS_LIBRARY=${{runner.workspace}}/rtl-sdr-build-kit/pthread-win32/Win64/Release/lib/pthreadVC3.lib
+
+        - name: Build
+          working-directory: ${{runner.workspace}}/build
+          run: cmake --build . --config Release --target INSTALL --verbose
+
+        - name: Compress
+          run: 7z a rtl-sdr_build_VS2019_Win64.zip ${{runner.workspace}}/build/rtl-sdr-msvc142-Win64
+        - name: 'Upload Artifact'
+          uses: actions/upload-artifact@v3
+          with:
+            name: windows_2019_build
+            path: rtl-sdr_build_VS2019_Win64.zip
+
     create_archive:
-      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_20_04', 'build_macos_latest', 'build_macos_11']
+      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_20_04', 'build_macos_latest', 'build_macos_11', 'build_win_2019_64']
       runs-on: ubuntu-latest
 
       steps:
@@ -96,7 +130,8 @@ jobs:
           mv ubuntu_latest_build/rtl-sdr_build_ubuntu_latest-amd64.tar.gz rtl-sdr_all/ && 
           mv ubuntu_20_04_build/rtl-sdr_build_ubuntu_20.04-amd64.tar.gz rtl-sdr_all/ && 
           mv macos_latest_build/rtl-sdr_build_macos_intel-latest.tar.gz rtl-sdr_all/ && 
-          mv macos_11_build/rtl-sdr_build_macos_11_intel.tar.gz rtl-sdr_all/
+          mv macos_11_build/rtl-sdr_build_macos_11_intel.tar.gz rtl-sdr_all/ &&
+          mv windows_2019_build/rtl-sdr_build_VS2019_Win64.zip rtl-sdr_all/
 
       - uses: actions/upload-artifact@v3
         with:
