@@ -119,7 +119,7 @@ void max2112_registerdump(void *dev)
 // return -1 - I2C read or write failed
 // -2 for n value out of range
 // -3; // VCO has failed to lock
-int max2112_set_freq(void *dev, uint32_t tunefreq)
+int max2112_set_freq(void *dev, uint32_t tunefreq, uint32_t *param)
 {
 
 	uint32_t rtlfreq = 0;
