@@ -98,8 +98,10 @@ make install DESTDIR=build_folder_name
 - [Gqrx](https://github.com/gqrx-sdr/gqrx)
 - [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus)
 - [GNU Radio](https://github.com/gnuradio/gnuradio)
+- [OpenWebRX](https://github.com/jketterl/openwebrx)
 - SDRSharp
 - [CubicSDR](https://github.com/cjcliffe/CubicSDR)
+- [HDSDR](https://hdsdr.de/) and other [Winrad](https://www.i2phd.org/winrad/) compatible programs using [ExtIO_RTL](https://github.com/Mr-Precise/ExtIO_RTL)
 - [etc](https://www.rtl-sdr.com/big-list-rtl-sdr-supported-software/)  
 
 ## Setup for SDR only use - without DVB compatibility:
