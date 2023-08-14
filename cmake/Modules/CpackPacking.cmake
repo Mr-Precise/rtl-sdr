@@ -5,11 +5,16 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Software defined radio receiver for Realtek RTL2832U")
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.
 (From my experiments up to 3.4 MHz on R820T2)\n
+Realtek RTL2832U based hardware can be used as a cheap SDR (Software-defined radio).\n
+This device allows transferring the raw I/Q samples to the your PC/laptop/etc via USB.\n
 This package contains the binaries, shared and dev library.") 
 
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/Mr-Precise/rtl-sdr")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Precise")
 set(CPACK_DEBIAN_PACKAGE_SECTION "libs")
+set(CPACK_DEBIAN_PACKAGE_CONFLICTS "librtlsdr-dev, rtl-sdr")
+set(CPACK_DEBIAN_PACKAGE_PROVIDES "librtlsdr-dev, rtl-sdr")
+set(CPACK_DEBIAN_PACKAGE_REPLACES "librtlsdr-dev, rtl-sdr")
 
 set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/Generated_Packages")
 
