@@ -185,6 +185,7 @@ install(FILES
 # Add subdirectories
 ########################################################################
 add_subdirectory(src)
+add_subdirectory(man)
 
 ########################################################################
 # Create Pkg Config File
