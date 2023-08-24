@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #define min(a, b) (((a) < (b)) ? (a) : (b))
@@ -146,10 +147,12 @@ int e4000_init(void *dev) {
 	devt->e4k_s.rtl_dev = dev;
 	return e4k_init(&devt->e4k_s);
 }
+
 int e4000_exit(void *dev) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_standby(&devt->e4k_s, 1);
 }
+
 int e4000_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_tune_freq(&devt->e4k_s, freq, lo_freq_out);
@@ -183,10 +186,12 @@ int e4000_set_gain(void *dev, int gain) {
 #endif
 	return 0;
 }
+
 int e4000_set_if_gain(void *dev, int stage, int gain) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_if_gain_set(&devt->e4k_s, (uint8_t)stage, (int8_t)(gain / 10));
 }
+
 int e4000_set_gain_mode(void *dev, int manual) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_enable_manual_gain(&devt->e4k_s, manual);
@@ -200,6 +205,7 @@ int fc0012_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	rtlsdr_set_gpio_bit(dev, 6, (freq > 300000000) ? 1 : 0);
 	return fc0012_set_params(dev, freq, 6000000);
 }
+
 int fc0012_set_bw(void *dev, int bw) { return 0; }
 int _fc0012_set_gain(void *dev, int gain) { return fc0012_set_gain(dev, gain); }
 int fc0012_set_gain_mode(void *dev, int manual) { return 0; }
@@ -210,6 +216,7 @@ int fc0013_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	if (lo_freq_out) *lo_freq_out = freq;
 	return fc0013_set_params(dev, freq, 6000000);
 }
+
 int fc0013_set_bw(void *dev, int bw) { return 0; }
 int _fc0013_set_gain(void *dev, int gain) { return fc0013_set_lna_gain(dev, gain); }
 
@@ -219,6 +226,7 @@ int _fc2580_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	if (lo_freq_out) *lo_freq_out = freq;
 	return fc2580_SetRfFreqHz(dev, freq);
 }
+
 int fc2580_set_bw(void *dev, int bw) { return fc2580_SetBandwidthMode(dev, 1); }
 int fc2580_set_gain(void *dev, int gain) { return 0; }
 int fc2580_set_gain_mode(void *dev, int manual) { return 0; }
@@ -243,6 +251,7 @@ int r820t_init(void *dev) {
 
 	return r82xx_init(&devt->r82xx_p);
 }
+
 int r820t_exit(void *dev) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return r82xx_standby(&devt->r82xx_p);
@@ -1403,11 +1412,6 @@ int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
-	/* RTL-SDR-BLOG Hack, enables us to turn on the bias tee by clicking on "offset tuning" in software that doesn't have specified bias tee support.
-    * Offset tuning is not used for R820T/R828D devices so it is no problem.
-	*/
-	rtlsdr_set_bias_tee(dev, on);
-
 	if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
 	    (dev->tuner_type == RTLSDR_TUNER_R828D))
 		return -2;
@@ -1592,10 +1596,11 @@ int rtlsdr_get_index_by_serial(const char *serial)
 }
 
 /* Returns true if the manufact_check and product_check strings match what is in the dongles EEPROM */
-int rtlsdr_check_dongle_model(void *dev, char* manufact_check, char* product_check)
+int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_check)
 {
 	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0 && strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
 		return 1;
+
 	return 0;
 }
 
@@ -1773,7 +1778,6 @@ found:
 	case RTLSDR_TUNER_R828D:
 		/* If NOT an RTL-SDR Blog V4, set typical R828D 16 MHz freq. Otherwise, keep at 28.8 MHz. */
 		if (!(rtlsdr_check_dongle_model(dev, "RTLSDRBlog", "Blog V4"))) {
-			fprintf(stdout, "setting 16mhz");
 			dev->tun_xtal = R828D_XTAL_FREQ;
 		}
 		/* fall-through */
@@ -2207,6 +2211,7 @@ int rtlsdr_i2c_read_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
 	} while (retries > 0);
 	return -1;
 }
+
 int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
 	if (!dev)
