@@ -124,6 +124,9 @@ struct rtlsdr_dev {
 	struct e4k_state e4k_s;
 	struct r82xx_config r82xx_c;
 	struct r82xx_priv r82xx_p;
+	int biast_gpio_pin_no;
+	uint32_t gpio_state_known; /* bitmask over pins 0 .. 7 */
+	uint32_t gpio_state; /* bitmask over pins 0 .. 7: = 0 == write, 1 == read */
 	/* status */
 	int dev_lost;
 	int driver_active;
@@ -135,8 +138,6 @@ struct rtlsdr_dev {
 	char manufact[256];
 	char product[256];
 };
-
-void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
 
 /* generic tuner interface functions, shall be moved to the tuner implementations */
 /* which has been done for the MAX2112 */
@@ -641,35 +642,96 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 
 // TODO: fill these in
 
-void rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio)
+
+int rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio)
 {
+	int r, retval = 0;
+	gpio = 1 << gpio;
+
+	/* state: bitmask over pins 0 .. 7: = 0 == write, 1 == read */
+	if ( !(dev->gpio_state_known & gpio) || !(dev->gpio_state & gpio) )
+	{
+		r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPD, r | gpio, 1);
+		if (retval < 0)
+			return retval;
+		r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPOE, r & ~gpio, 1);
+		if (retval < 0)
+			return retval;
+
+		dev->gpio_state_known |= gpio;
+		dev->gpio_state |= ( (uint32_t)gpio );
+	}
+
+	return retval;
 }
 
 
-uint8_t rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio)
-{
-	return 0;
-}
-
-void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val)
+int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int *val)
 {
 	uint16_t r;
 
 	gpio = 1 << gpio;
-	r = rtlsdr_read_reg(dev, SYSB, GPO, 1);
-	r = val ? (r | gpio) : (r & ~gpio);
-	rtlsdr_write_reg(dev, SYSB, GPO, r, 1);
+	r = rtlsdr_read_reg(dev, SYSB, GPI, 1);
+	*val = (r & gpio) ? 1 : 0;
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
 }
 
-void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
+int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val)
 {
-	int r;
+	uint16_t r, retval;
+
+	gpio = 1 << gpio;
+	r = rtlsdr_read_reg(dev, SYSB, GPO, 1);
+	r = val ? (r | gpio) : (r & ~gpio);
+	retval = rtlsdr_write_reg(dev, SYSB, GPO, r, 1);
+	return retval;
+}
+
+int rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
+{
+	int r, retval = 0;
 	gpio = 1 << gpio;
 
+	/* state: bitmask over pins 0 .. 7: = 0 == write, 1 == read */
+	if ( !(dev->gpio_state_known & gpio) || (dev->gpio_state & gpio) )
+	{
+		r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPD, r & ~gpio, 1);
+		if (retval < 0)
+			return retval;
+		r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPOE, r | gpio, 1);
+		if (retval < 0)
+			return retval;
+
+		dev->gpio_state_known |= gpio;
+		dev->gpio_state &= ~( (uint32_t)gpio );
+	}
+
+	return retval;
+}
+
+int rtlsdr_set_gpio_status(rtlsdr_dev_t *dev, int *status )
+{
+	int r;
 	r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
-	rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1);
-	r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
-	rtlsdr_write_reg(dev, SYSB, GPOE, r | gpio, 1);
+	*status = r;
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
+}
+
+
+int rtlsdr_get_gpio_byte(rtlsdr_dev_t *dev, int *val)
+{
+	*val = rtlsdr_read_reg(dev, SYSB, GPI, 1);
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
+}
+
+int rtlsdr_set_gpio_byte(rtlsdr_dev_t *dev, int val)
+{
+	int retval = rtlsdr_write_reg(dev, SYSB, GPO, val, 1);
+	return retval;
 }
 
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
@@ -1625,6 +1687,10 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	libusb_init(&dev->ctx);
 
+	//TODO
+	dev->biast_gpio_pin_no = 0;
+	dev->gpio_state_known = 0;
+	dev->gpio_state = 0;
 	dev->dev_lost = 1;
 
 	cnt = libusb_get_device_list(dev->ctx, &list);
@@ -2217,10 +2283,23 @@ int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 	if (!dev)
 		return -1;
 
+	#if LOG_API_CALLS
+	fprintf(stderr, "LOG: rtlsdr_set_bias_tee_gpio(gpio %d, on %d)\n",
+		gpio, on);
+	#endif
+
 	rtlsdr_set_gpio_output(dev, gpio);
 	rtlsdr_set_gpio_bit(dev, gpio, on);
 
 	return 0;
+}
+
+int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+{
+	if (!dev)
+		return -1;
+
+	return rtlsdr_set_bias_tee_gpio(dev, dev->biast_gpio_pin_no, on);
 }
 
 struct rtl28xxu_reg_val_mask {
@@ -2359,8 +2438,3 @@ err:
 	return ret;
 }
 
-// Add GPIO version of the bias tee configuration API
-int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
-{
-	return rtlsdr_set_bias_tee_gpio(dev, 0, on);
-}
