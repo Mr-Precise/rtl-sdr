@@ -138,8 +138,6 @@ add_executable(rtl_power rtl_power.c ${rtl_apps_RES})
 add_executable(rtl_biast rtl_biast.c ${rtl_apps_RES})
 add_executable(rtl_nfc rtl_nfc.c ${rtl_apps_RES})
 
-set(INSTALL_TARGETS rtlsdr_shared rtlsdr_static rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
-
 target_link_libraries(rtl_sdr ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -151,14 +149,17 @@ target_link_libraries(rtl_tcp ${RTL_APP_SELECT_LIB} convenience_static
 target_link_libraries(rtl_test ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 target_link_libraries(rtl_fm ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 target_link_libraries(rtl_ir ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 target_link_libraries(rtl_eeprom ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
@@ -167,10 +168,12 @@ target_link_libraries(rtl_eeprom ${RTL_APP_SELECT_LIB} convenience_static
 target_link_libraries(rtl_adsb ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 target_link_libraries(rtl_power ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 target_link_libraries(rtl_biast ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
@@ -179,28 +182,23 @@ target_link_libraries(rtl_biast ${RTL_APP_SELECT_LIB} convenience_static
 target_link_libraries(rtl_nfc ${RTL_APP_SELECT_LIB} convenience_static
     ${LIBUSB_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${MATH_LIBRARIES}
 )
 
 # static link winpthread for MinGW build
 if(MINGW)
-  target_link_libraries(rtl_tcp -static winpthread)
+  target_link_libraries(rtl_tcp -  winpthread)
   target_link_libraries(rtl_fm -static winpthread)
   target_link_libraries(rtl_adsb -static winpthread)
 endif()
 
 if(UNIX)
-  target_link_libraries(rtl_fm ${MATH_LIBRARIES})
-  target_link_libraries(rtl_ir ${MATH_LIBRARIES})
-  target_link_libraries(rtl_adsb ${MATH_LIBRARIES})
-  target_link_libraries(rtl_power ${MATH_LIBRARIES})
-if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
-  target_link_libraries(rtl_tcp network)
-if(APPLE OR CMAKE_SYSTEM MATCHES "OpenBSD" OR ANDROID)
-  target_link_libraries(rtl_test ${MATH_LIBRARIES})
-else()
-  # target_link_libraries(rtl_test ${MATH_LIBRARIES} rt)
-endif()
-endif()
+  if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
+    target_link_libraries(rtl_tcp network)
+  endif()
+  if(APPLE OR CMAKE_SYSTEM MATCHES "OpenBSD" OR ANDROID)
+    target_link_libraries(rtl_test ${MATH_LIBRARIES})
+  endif()
 endif()
 
 if(WIN32)
@@ -228,14 +226,16 @@ endif()
 ########################################################################
 # Install built library files & utilities
 ########################################################################
+set(INSTALL_TARGETS_UTILS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc)
+
 install(TARGETS rtlsdr_shared EXPORT RTLSDR-export
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dylib file
+)
+if(INSTALL_STATIC_LIB)
+  install(TARGETS rtlsdr_static EXPORT RTLSDR-export
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .a/.lib file
   )
-  if(INSTALL_STATIC_LIB)
-    install(TARGETS rtlsdr_static EXPORT RTLSDR-export
-      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # .a/.lib file
-    )
-  endif()
-install(TARGETS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_adsb rtl_power rtl_biast rtl_nfc
+endif()
+install(TARGETS ${INSTALL_TARGETS_UTILS}
   DESTINATION ${CMAKE_INSTALL_BINDIR}
-  )
+)
