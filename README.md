@@ -98,8 +98,10 @@ make install DESTDIR=build_folder_name
 - [Gqrx](https://github.com/gqrx-sdr/gqrx)
 - [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus)
 - [GNU Radio](https://github.com/gnuradio/gnuradio)
+- [OpenWebRX](https://github.com/jketterl/openwebrx)
 - SDRSharp
 - [CubicSDR](https://github.com/cjcliffe/CubicSDR)
+- [HDSDR](https://hdsdr.de/) and other [Winrad](https://www.i2phd.org/winrad/) compatible programs using [ExtIO_RTL](https://github.com/Mr-Precise/ExtIO_RTL)
 - [etc](https://www.rtl-sdr.com/big-list-rtl-sdr-supported-software/)  
 
 ## Setup for SDR only use - without DVB compatibility:
@@ -109,6 +111,43 @@ make install DESTDIR=build_folder_name
   thus can be used without blacklisting dvb_usb_rtl28xxu below /etc/modprobe.d/
 - this allows to use a second RTL dongle for use with DVB in parallel
 - the IDs can be programmed with 'rtl_eeprom -n' or 'rtl_eeprom -g realtek_sdr'  
+
+## Dev documentation:
+### Connect && use library on your project:
+If using find_package:
+```cmake
+find_package(rtlsdr REQUIRED)
+
+target_link_libraries(${PROJECT_NAME}
+    rtlsdr::rtlsdr_static #static library
+    rtlsdr::rtlsdr_shared #shared library
+)
+```
+If using pkg_check_modules:
+```cmake
+find_package(PkgConfig)
+pkg_check_modules(RTLSDR librtlsdr REQUIRED)
+
+include_directories(${RTLSDR_INCLUDE_DIRS})
+
+target_link_libraries(${PROJECT_NAME}
+    ${RTLSDR_LIBRARIES}
+)
+```
+If used as a git submodule:
+```cmake
+add_subdirectory(rtl-sdr)
+include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr/src
+)
+
+target_link_libraries(${PROJECT_NAME}
+    rtlsdr_shared
+    rtlsdr_static #for static link
+    convenience_static #only for static link
+)
+```
 
 ## (old) Notes on the mutability tree (2014/09/29)
 Based on developments by Oliver Jowett from [mutability repo](https://github.com/mutability/rtl-sdr)  

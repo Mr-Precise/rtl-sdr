@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #ifndef _WIN32
 #include <unistd.h>
 #define min(a, b) (((a) < (b)) ? (a) : (b))
@@ -123,6 +124,9 @@ struct rtlsdr_dev {
 	struct e4k_state e4k_s;
 	struct r82xx_config r82xx_c;
 	struct r82xx_priv r82xx_p;
+	int biast_gpio_pin_no;
+	uint32_t gpio_state_known; /* bitmask over pins 0 .. 7 */
+	uint32_t gpio_state; /* bitmask over pins 0 .. 7: = 0 == write, 1 == read */
 	/* status */
 	int dev_lost;
 	int driver_active;
@@ -131,9 +135,9 @@ struct rtlsdr_dev {
 	int tuner_initialized;
 	int i2c_repeater_on;
 	int spectrum_inversion;
+	char manufact[256];
+	char product[256];
 };
-
-void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
 
 /* generic tuner interface functions, shall be moved to the tuner implementations */
 /* which has been done for the MAX2112 */
@@ -144,10 +148,12 @@ int e4000_init(void *dev) {
 	devt->e4k_s.rtl_dev = dev;
 	return e4k_init(&devt->e4k_s);
 }
+
 int e4000_exit(void *dev) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_standby(&devt->e4k_s, 1);
 }
+
 int e4000_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_tune_freq(&devt->e4k_s, freq, lo_freq_out);
@@ -181,10 +187,12 @@ int e4000_set_gain(void *dev, int gain) {
 #endif
 	return 0;
 }
+
 int e4000_set_if_gain(void *dev, int stage, int gain) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_if_gain_set(&devt->e4k_s, (uint8_t)stage, (int8_t)(gain / 10));
 }
+
 int e4000_set_gain_mode(void *dev, int manual) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return e4k_enable_manual_gain(&devt->e4k_s, manual);
@@ -198,6 +206,7 @@ int fc0012_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	rtlsdr_set_gpio_bit(dev, 6, (freq > 300000000) ? 1 : 0);
 	return fc0012_set_params(dev, freq, 6000000);
 }
+
 int fc0012_set_bw(void *dev, int bw) { return 0; }
 int _fc0012_set_gain(void *dev, int gain) { return fc0012_set_gain(dev, gain); }
 int fc0012_set_gain_mode(void *dev, int manual) { return 0; }
@@ -208,6 +217,7 @@ int fc0013_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	if (lo_freq_out) *lo_freq_out = freq;
 	return fc0013_set_params(dev, freq, 6000000);
 }
+
 int fc0013_set_bw(void *dev, int bw) { return 0; }
 int _fc0013_set_gain(void *dev, int gain) { return fc0013_set_lna_gain(dev, gain); }
 
@@ -217,6 +227,7 @@ int _fc2580_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 	if (lo_freq_out) *lo_freq_out = freq;
 	return fc2580_SetRfFreqHz(dev, freq);
 }
+
 int fc2580_set_bw(void *dev, int bw) { return fc2580_SetBandwidthMode(dev, 1); }
 int fc2580_set_gain(void *dev, int gain) { return 0; }
 int fc2580_set_gain_mode(void *dev, int manual) { return 0; }
@@ -241,6 +252,7 @@ int r820t_init(void *dev) {
 
 	return r82xx_init(&devt->r82xx_p);
 }
+
 int r820t_exit(void *dev) {
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
 	return r82xx_standby(&devt->r82xx_p);
@@ -334,7 +346,8 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x0ccd, 0x00d3, "Terratec Cinergy T Stick RC (Rev.3)" },
 	{ 0x0ccd, 0x00d7, "Terratec T Stick PLUS" },
 	{ 0x0ccd, 0x00e0, "Terratec NOXON DAB/DAB+ USB dongle (rev 2)" },
-	{ 0x1209, 0x2832, "Generic RTL2832U" },
+	{ 0x1209, 0x2832, "SDR RTL2832U" },
+	{ 0x1209, 0x2838, "SDR RTL2832U" },
 	{ 0x1554, 0x5020, "PixelView PV-DT235U(RN)" },
 	{ 0x15f4, 0x0131, "Astrometa DVB-T/DVB-T2" },
 	{ 0x15f4, 0x0133, "HanfTek DAB+FM+DVB-T" },
@@ -629,35 +642,96 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 
 // TODO: fill these in
 
-void rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio)
+
+int rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio)
 {
+	int r, retval = 0;
+	gpio = 1 << gpio;
+
+	/* state: bitmask over pins 0 .. 7: = 0 == write, 1 == read */
+	if ( !(dev->gpio_state_known & gpio) || !(dev->gpio_state & gpio) )
+	{
+		r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPD, r | gpio, 1);
+		if (retval < 0)
+			return retval;
+		r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPOE, r & ~gpio, 1);
+		if (retval < 0)
+			return retval;
+
+		dev->gpio_state_known |= gpio;
+		dev->gpio_state |= ( (uint32_t)gpio );
+	}
+
+	return retval;
 }
 
 
-uint8_t rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio)
-{
-	return 0;
-}
-
-void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val)
+int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int *val)
 {
 	uint16_t r;
 
 	gpio = 1 << gpio;
-	r = rtlsdr_read_reg(dev, SYSB, GPO, 1);
-	r = val ? (r | gpio) : (r & ~gpio);
-	rtlsdr_write_reg(dev, SYSB, GPO, r, 1);
+	r = rtlsdr_read_reg(dev, SYSB, GPI, 1);
+	*val = (r & gpio) ? 1 : 0;
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
 }
 
-void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
+int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val)
 {
-	int r;
+	uint16_t r, retval;
+
+	gpio = 1 << gpio;
+	r = rtlsdr_read_reg(dev, SYSB, GPO, 1);
+	r = val ? (r | gpio) : (r & ~gpio);
+	retval = rtlsdr_write_reg(dev, SYSB, GPO, r, 1);
+	return retval;
+}
+
+int rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio)
+{
+	int r, retval = 0;
 	gpio = 1 << gpio;
 
+	/* state: bitmask over pins 0 .. 7: = 0 == write, 1 == read */
+	if ( !(dev->gpio_state_known & gpio) || (dev->gpio_state & gpio) )
+	{
+		r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPD, r & ~gpio, 1);
+		if (retval < 0)
+			return retval;
+		r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
+		retval = rtlsdr_write_reg(dev, SYSB, GPOE, r | gpio, 1);
+		if (retval < 0)
+			return retval;
+
+		dev->gpio_state_known |= gpio;
+		dev->gpio_state &= ~( (uint32_t)gpio );
+	}
+
+	return retval;
+}
+
+int rtlsdr_set_gpio_status(rtlsdr_dev_t *dev, int *status )
+{
+	int r;
 	r = rtlsdr_read_reg(dev, SYSB, GPD, 1);
-	rtlsdr_write_reg(dev, SYSB, GPO, r & ~gpio, 1);
-	r = rtlsdr_read_reg(dev, SYSB, GPOE, 1);
-	rtlsdr_write_reg(dev, SYSB, GPOE, r | gpio, 1);
+	*status = r;
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
+}
+
+
+int rtlsdr_get_gpio_byte(rtlsdr_dev_t *dev, int *val)
+{
+	*val = rtlsdr_read_reg(dev, SYSB, GPI, 1);
+	return 0; /* no way to determine error with rtlsdr_read_reg() for now! */
+}
+
+int rtlsdr_set_gpio_byte(rtlsdr_dev_t *dev, int val)
+{
+	int retval = rtlsdr_write_reg(dev, SYSB, GPO, val, 1);
+	return retval;
 }
 
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
@@ -1258,13 +1332,13 @@ int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 	if ( ((double)samp_rate) != real_rate )
 		fprintf(stderr, "Exact sample rate is: %f Hz\n", real_rate);
 
+	dev->rate = (uint32_t)real_rate;
+
 	if (dev->tuner && dev->tuner->set_bw) {
 		rtlsdr_set_i2c_repeater(dev, 1);
-		dev->tuner->set_bw(dev, (int)real_rate);
+		dev->tuner->set_bw(dev, dev->bw > 0 ? dev->bw : dev->rate);
 		rtlsdr_set_i2c_repeater(dev, 0);
 	}
-
-	dev->rate = (uint32_t)real_rate;
 
 	tmp = (rsamp_ratio >> 16);
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x9f, tmp, 2);
@@ -1576,6 +1650,37 @@ int rtlsdr_get_device_usb_strings(uint32_t index, char *manufact,
 	return r;
 }
 
+int rtlsdr_get_index_by_serial(const char *serial)
+{
+	int i, cnt, r;
+	char str[256];
+
+	if (!serial)
+		return -1;
+
+	cnt = rtlsdr_get_device_count();
+
+	if (!cnt)
+		return -2;
+
+	for (i = 0; i < cnt; i++) {
+		r = rtlsdr_get_device_usb_strings(i, NULL, NULL, str);
+		if (!r && !strcmp(serial, str))
+			return i;
+	}
+
+	return -3;
+}
+
+/* Returns true if the manufact_check and product_check strings match what is in the dongles EEPROM */
+int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_check)
+{
+	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0 && strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
+		return 1;
+
+	return 0;
+}
+
 int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 {
 	int r;
@@ -1605,6 +1710,10 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 		return -1;
 	}
 
+	//TODO
+	dev->biast_gpio_pin_no = 0;
+	dev->gpio_state_known = 0;
+	dev->gpio_state = 0;
 	dev->dev_lost = 1;
 
 	cnt = libusb_get_device_list(dev->ctx, &list);
@@ -1689,28 +1798,6 @@ int rtlsdr_open_fd(rtlsdr_dev_t **out_dev, int fd)
 	return rtlsdr_setup(out_dev, dev);
 }
 
-int rtlsdr_get_index_by_serial(const char *serial)
-{
-	int i, cnt, r;
-	char str[256];
-
-	if (!serial)
-		return -1;
-
-	cnt = rtlsdr_get_device_count();
-
-	if (!cnt)
-		return -2;
-
-	for (i = 0; i < cnt; i++) {
-		r = rtlsdr_get_device_usb_strings(i, NULL, NULL, str);
-		if (!r && !strcmp(serial, str))
-			return i;
-	}
-
-	return -3;
-}
-
 int rtlsdr_setup(rtlsdr_dev_t **out_dev, rtlsdr_dev_t *dev) {
 	int r;
 	int i;
@@ -1753,6 +1840,9 @@ int rtlsdr_setup(rtlsdr_dev_t **out_dev, rtlsdr_dev_t *dev) {
 	rtlsdr_init_baseband(dev);
 	dev->dev_lost = 0;
 
+	/* Get device manufacturer and product id */
+	r = rtlsdr_get_usb_strings(dev, dev->manufact, dev->product, NULL);
+
 	/* Probe tuners */
 	rtlsdr_set_i2c_repeater(dev, 1);
 
@@ -1791,6 +1881,10 @@ int rtlsdr_setup(rtlsdr_dev_t **out_dev, rtlsdr_dev_t *dev) {
 	reg = rtlsdr_i2c_read_reg(dev, R828D_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
 		fprintf(stderr, "Found Rafael Micro R828D tuner\n");
+
+		if (rtlsdr_check_dongle_model(dev, "RTLSDRBlog", "Blog V4"))
+			fprintf(stderr, "RTL-SDR Blog V4 Detected\n");
+
 		dev->tuner_type = RTLSDR_TUNER_R828D;
 		goto found;
 	}
@@ -1824,7 +1918,10 @@ found:
 
 	switch (dev->tuner_type) {
 	case RTLSDR_TUNER_R828D:
-		dev->tun_xtal = R828D_XTAL_FREQ;
+		/* If NOT an RTL-SDR Blog V4, set typical R828D 16 MHz freq. Otherwise, keep at 28.8 MHz. */
+		if (!(rtlsdr_check_dongle_model(dev, "RTLSDRBlog", "Blog V4"))) {
+			dev->tun_xtal = R828D_XTAL_FREQ;
+		}
 		/* fall-through */
 	case RTLSDR_TUNER_R820T:
 		/* disable Zero-IF mode */
@@ -2256,15 +2353,29 @@ int rtlsdr_i2c_read_fn(void *dev, uint8_t addr, uint8_t *buf, int len)
 	} while (retries > 0);
 	return -1;
 }
+
 int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
 	if (!dev)
 		return -1;
 
+	#if LOG_API_CALLS
+	fprintf(stderr, "LOG: rtlsdr_set_bias_tee_gpio(gpio %d, on %d)\n",
+		gpio, on);
+	#endif
+
 	rtlsdr_set_gpio_output(dev, gpio);
 	rtlsdr_set_gpio_bit(dev, gpio, on);
 
 	return 0;
+}
+
+int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
+{
+	if (!dev)
+		return -1;
+
+	return rtlsdr_set_bias_tee_gpio(dev, dev->biast_gpio_pin_no, on);
 }
 
 struct rtl28xxu_reg_val_mask {
@@ -2403,8 +2514,3 @@ err:
 	return ret;
 }
 
-// Add GPIO version of the bias tee configuration API
-int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on)
-{
-	return rtlsdr_set_bias_tee_gpio(dev, 0, on);
-}

@@ -412,12 +412,16 @@ RTLSDR_API uint8_t rtlsdr_i2c_read_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint
 RTLSDR_API int rtlsdr_i2c_write_reg(rtlsdr_dev_t *dev, uint8_t i2c_addr, uint8_t reg, uint8_t val);
 
 // expose existing GPIO functions:
-RTLSDR_API void rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
-RTLSDR_API void rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio);
+RTLSDR_API int rtlsdr_set_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int val);
+RTLSDR_API int rtlsdr_set_gpio_output(rtlsdr_dev_t *dev, uint8_t gpio);
 
-// TODO: - add GPIO read/input functions
-RTLSDR_API uint8_t rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio);
-RTLSDR_API void rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio);
+RTLSDR_API int rtlsdr_get_gpio_bit(rtlsdr_dev_t *dev, uint8_t gpio, int *val);
+RTLSDR_API int rtlsdr_set_gpio_input(rtlsdr_dev_t *dev, uint8_t gpio);
+
+RTLSDR_API int rtlsdr_set_gpio_byte(rtlsdr_dev_t *dev, int val);
+RTLSDR_API int rtlsdr_get_gpio_byte(rtlsdr_dev_t *dev, int *val);
+
+RTLSDR_API int rtlsdr_set_gpio_status(rtlsdr_dev_t *dev, int *status );
 
 /*!
  * Enable or disable (the bias tee on) GPIO PIN 0. (Works for rtl-sdr.com v3 dongles)
