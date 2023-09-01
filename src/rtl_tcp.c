@@ -396,7 +396,7 @@ int main(int argc, char **argv)
 	int gain = 0;
 	int ppm_error = 0;
 	int custom_ppm = 0;
-	struct llist *curelem,*prev;
+	struct llist *curelem, *prev;
 	pthread_attr_t attr;
 	void *status;
 	struct timeval tv = {1,0};
@@ -557,7 +557,7 @@ int main(int argc, char **argv)
 				    hostinfo, NI_MAXHOST,
 				    portinfo, NI_MAXSERV, NI_NUMERICSERV | NI_NUMERICHOST);
 		if (aiErr)
-			fprintf( stderr, "getnameinfo ERROR - %s.\n",hostinfo);
+			fprintf( stderr, "getnameinfo ERROR - %s.\n", hostinfo);
 
 		listensocket = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 		if (listensocket < 0)
@@ -567,7 +567,11 @@ int main(int argc, char **argv)
 		setsockopt(listensocket, SOL_SOCKET, SO_REUSEADDR, (char *)&r, sizeof(int));
 		setsockopt(listensocket, SOL_SOCKET, SO_LINGER, (char *)&ling, sizeof(ling));
 
+#ifdef __FreeBSD__
+		if (bind(listensocket, ai->ai_addr, ai->ai_addrlen) == -1)
+#else
 		if (bind(listensocket, (struct sockaddr *)&local, sizeof(local)))
+#endif
 			fprintf(stderr, "rtl_tcp bind error: %s", strerror(errno));
 		else
 			break;
