@@ -77,6 +77,7 @@ void usage(void)
 		"\t[-b]\tDisplay output in binary (default), pulse=1, space=0; each 20 usec\n"
 		"\t[-t]\tDisplay output in text format\n"
 		"\t[-x]\tDisplay output in raw packed bytes, MSB=pulse/space, 7LSB=duration*20 usec\n"
+		"\t[-v]\tVersion\n"
 		"\t[-h]\tHelp\n"
 		);
 	exit(1);
@@ -115,10 +116,11 @@ int main(int argc, char **argv) {
 	int max_count = 0, iteration_count = 0;
 	int output_binary = 0, output_text = 0, output_packed = 0;
 	uint8_t buf[128] = { 0 };
+	char version_string[20];
 
 	dongle_init(&dongle);
 
-	while ((opt = getopt(argc, argv, "d:c:w:btxh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:c:w:btxvh")) != -1) {
 		switch (opt) {
 		case 'd':
 			dongle.dev_index = verbose_device_search(optarg);
@@ -138,6 +140,11 @@ int main(int argc, char **argv) {
 			break;
 		case 'x':
 			output_packed = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		case 'h':
 		default:

@@ -57,6 +57,7 @@ void usage(void)
 		"\t[-S force sync output (default: async)]\n"
 		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q), 3 (no-mod)]\n"
 		"\t[-N no dithering (default: use dithering)]\n"
+		"\t[-v Version]\n"
 		"\tfilename (a '-' dumps samples to stdout)\n\n");
 	exit(1);
 }
@@ -125,8 +126,9 @@ int main(int argc, char **argv)
 	uint32_t frequency = 100000000;
 	uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
+	char version_string[20];
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:n:p:D:SN")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:n:p:D:SNv")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -158,6 +160,11 @@ int main(int argc, char **argv)
 			break;
 		case 'N':
 			dithering = 0;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		default:
 			usage();

@@ -34,6 +34,13 @@ RTLSDR_API uint32_t rtlsdr_get_device_count(void);
 RTLSDR_API const char* rtlsdr_get_device_name(uint32_t index);
 
 /*!
+ * Get version info
+ *
+ * \return Shows the library version. No more than 20 symbols.
+ */
+RTLSDR_API void get_rtlsdr_version(char* version_buffer, size_t buffer_size);
+
+/*!
  * Get USB device strings.
  *
  * NOTE: The string arguments must provide space for up to 256 bytes.

@@ -186,6 +186,7 @@ void usage(void)
 		"\t[-L enable linear output (default: off/dB)]\n"
 		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q), 3 (no-mod)]\n"
 		"\t[-O enable offset tuning (default: off)]\n"
+		"\t[-v Version]\n"
 		"\n"
 		"CSV FFT output columns:\n"
 		"\tdate, time, Hz low, Hz high, Hz step, samples, dbm, dbm, ...\n\n"
@@ -993,10 +994,11 @@ int main(int argc, char **argv)
 	char t_str[50];
 	struct tm *cal_time;
 	struct misc_settings ms;
+	char version_string[20];
 	freq_optarg = "";
 	init_misc(&ms);
 
-	while ((opt = getopt(argc, argv, "f:i:s:r:t:d:g:p:e:w:c:F:1PLD:OhT")) != -1) {
+	while ((opt = getopt(argc, argv, "f:i:s:r:t:d:g:p:e:w:c:F:1PLD:OhTv")) != -1) {
 		switch (opt) {
 		case 'f': // lower:upper:bin_size
 			if (f_set) {
@@ -1075,6 +1077,11 @@ int main(int argc, char **argv)
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		case 'h':
 		default:

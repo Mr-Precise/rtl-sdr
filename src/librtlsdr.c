@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <string.h>
+#include "version.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -2433,3 +2434,8 @@ err:
 	return ret;
 }
 
+void get_rtlsdr_version(char* version_buffer, size_t buffer_size) {
+    const char* version_string = VERSION_LIB;
+    strncpy(version_buffer, version_string, buffer_size - 1);
+    version_buffer[buffer_size - 1] = '\0';
+}

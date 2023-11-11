@@ -102,7 +102,9 @@ void usage(void)
 		"\t[-p[seconds] enable PPM error measurement (default: 10 seconds)]\n"
 #endif
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
-		"\t[-S force sync output (default: async)]\n");
+		"\t[-S force sync output (default: async)]\n"
+		"\t[-v Version]\n");
+
 	exit(1);
 }
 
@@ -425,8 +427,9 @@ int main(int argc, char **argv)
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
 	int count;
 	int gains[100];
+	char version_string[20];
 
-	while ((opt = getopt(argc, argv, "d:s:b:tp::Sh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:b:tp::Svh")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -448,6 +451,11 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			sync_mode = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		case 'h':
 		default:

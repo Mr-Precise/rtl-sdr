@@ -26,6 +26,7 @@
 #include <unistd.h>
 #else
 #include <windows.h>
+#include "getopt/getopt.h"
 #endif
 #include <stdint.h>
 #include <math.h>
@@ -36,6 +37,16 @@
 #define RECEIVE_BUFF_SIZE 16384*8
 #define MOVING_AVERAGE_MAX 512
 #define READER_BUFFER_MAX_SIZE 512
+
+void usage(void)
+{
+	fprintf(stderr,
+		"rtl_nfc, a simple NFC decoder\n\n"
+		"\t[-d device_index (default: 0)]\n"
+		"\t[-v Version]\n"
+		"\n");
+	exit(1);
+}
 
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
@@ -245,12 +256,30 @@ int main(int argc, char** argv)
 #endif
 	int dev_index = 0;
 	int dev_given = 0;
-	int r;
+	int r, opt;
 	int gainCount;
 	int allGains[100];
 	uint16_t* amData;
+	char version_string[20];
 
 	memset(movingAverageValues, 0x00, MOVING_AVERAGE_MAX * sizeof(uint16_t));
+
+	while ((opt = getopt(argc, argv, "d:v?")) != -1) {
+		switch (opt) {
+		case 'd':
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
+			break;
+		default:
+			usage();
+			break;
+		}
+	}
 
 	if (!dev_given) {
 		dev_index = verbose_device_search("0");

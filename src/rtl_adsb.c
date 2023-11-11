@@ -97,6 +97,7 @@ void usage(void)
 		"\t[-g tuner_gain (default: automatic)]\n"
 		"\t[-p ppm_error (default: 0)]\n"
 		"\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n"
+		"\t[-v Version]\n"
 		"\tfilename (a '-' dumps samples to stdout)\n"
 		"\t (omitting the filename also uses stdout)\n\n"
 		"Streaming with netcat:\n"
@@ -374,11 +375,12 @@ int main(int argc, char **argv)
 	int dev_given = 0;
 	int ppm_error = 0;
 	int enable_biastee = 0;
+	char version_string[20];
 	pthread_cond_init(&ready, NULL);
 	pthread_mutex_init(&ready_m, NULL);
 	squares_precompute();
 
-	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VST")) != -1)
+	while ((opt = getopt(argc, argv, "d:g:p:e:Q:VSTv")) != -1)
 	{
 		switch (opt) {
 		case 'd':
@@ -405,6 +407,11 @@ int main(int argc, char **argv)
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		default:
 			usage();

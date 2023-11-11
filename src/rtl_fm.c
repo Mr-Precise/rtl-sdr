@@ -241,6 +241,7 @@ void usage(void)
 		"\t    enables low-leakage downsample filter\n"
 		"\t    size can be 0 or 9.  0 has bad roll off\n"
 		"\t[-A std/fast/lut/ale choose atan math (default: std)]\n"
+		"\t[-v Version]\n"
 		//"\t[-C clip_path (default: off)\n"
 		//"\t (create time stamped raw clips, requires squelch)\n"
 		//"\t (path must have '\%s' and will expand to date_time_freq)\n"
@@ -1300,13 +1301,14 @@ int main(int argc, char **argv)
 	int dev_given = 0;
 	int custom_ppm = 0;
 	int enable_biastee = 0;
+	char version_string[20];
 	dongle_init(&dongle);
 	demod_init(&demod);
 	agc_init(&demod);
 	output_init(&output);
 	controller_init(&controller);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:hT")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:hTv")) != -1) {
 		switch (opt) {
 		case 'd':
 			dongle.dev_index = verbose_device_search(optarg);
@@ -1414,6 +1416,11 @@ int main(int argc, char **argv)
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		case 'h':
 		default:

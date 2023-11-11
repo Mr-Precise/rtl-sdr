@@ -62,6 +62,7 @@ endif(APPLE)
 
 target_include_directories(rtlsdr_shared PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
@@ -84,8 +85,10 @@ if(LINK_RTL_APPS_WITH_STATIC_LIB)
     target_link_directories(rtlsdr_static PUBLIC ${LIBUSB_LIBRARY_DIRS})
   endif(APPLE)
 endif()
+
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/src>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}

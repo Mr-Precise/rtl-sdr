@@ -48,7 +48,9 @@ void usage(void)
 		"\t[-r read pin (in input mode)]\n"
 		"\t[-w write pin (in output mode)]\n"
 		"\t[-s read all GPIO pins status (0 = write, 1 = read ?? )]\n"
-		"\t[-R read all GPIO pins ?? ]\n");
+		"\t[-R read all GPIO pins ?? ]\n"
+		"\t[-v Version]\n");
+
 	exit(1);
 }
 
@@ -64,8 +66,9 @@ int main(int argc, char **argv)
 	uint32_t bias_on = 0;
 	int gpio_pin = 0;
 	int device_count;
+	char version_string[20];
 
-	while ((opt = getopt(argc, argv, "d:b:w:g:srRh?")) != -1) {
+	while ((opt = getopt(argc, argv, "d:b:w:g:srRvh?")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -87,6 +90,11 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			req_status = 1;
+			break;
+		case 'v':
+			get_rtlsdr_version(version_string, sizeof(version_string));
+        	printf("Version: %s\n", version_string);
+			return 0;
 			break;
 		default:
 			usage();
