@@ -186,12 +186,12 @@ target_link_libraries(rtl_nfc ${RTL_APP_SELECT_LIB} convenience_static
 )
 
 # static link winpthread for MinGW build
-# TODO Rewrite/Remove/Fix
-if(MINGW)
-  target_link_libraries(rtl_tcp -static winpthread)
-  target_link_libraries(rtl_fm -static winpthread)
-  target_link_libraries(rtl_adsb -static winpthread)
-endif()
+# TODO Remove it
+# if(MINGW)
+#   target_link_libraries(rtl_tcp -static winpthread)
+#   target_link_libraries(rtl_fm -static winpthread)
+#   target_link_libraries(rtl_adsb -static winpthread)
+# endif()
 
 if(UNIX)
   if(CMAKE_SYSTEM_NAME MATCHES "Haiku")
