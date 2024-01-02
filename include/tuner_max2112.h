@@ -80,7 +80,7 @@
 
 int max2112_init(void *dev);
 int max2112_exit(void *dev);
-int max2112_set_freq(void *dev, uint32_t freq, uint32_t *param);
+int max2112_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq);
 int max2112_set_bw(void *dev, int bw);
 int max2112_set_gain(void *dev, int gain);
 int max2112_set_if_gain(void *dev, int stage, int gain);
