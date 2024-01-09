@@ -50,9 +50,9 @@ set(includedir \${prefix}/${CMAKE_INSTALL_INCLUDEDIR})
 set(libdir \${exec_prefix}/${CMAKE_INSTALL_LIBDIR})
 
 # Set the version information here
-set(VERSION_INFO_MAJOR_VERSION 2023) # increment major on api compatibility changes
-set(VERSION_INFO_MINOR_VERSION 8) # increment minor on feature-level changes
-set(VERSION_INFO_PATCH_VERSION 25) # increment patch for bug fixes and docs
+set(VERSION_INFO_MAJOR_VERSION 2024) # increment major on api compatibility changes
+set(VERSION_INFO_MINOR_VERSION 1) # increment minor on feature-level changes
+set(VERSION_INFO_PATCH_VERSION git) # increment patch for bug fixes and docs
 include(Version) # setup version info
 include(CpackPacking)
 
