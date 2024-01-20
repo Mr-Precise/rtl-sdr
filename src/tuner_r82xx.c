@@ -314,6 +314,11 @@ static int r82xx_write(struct r82xx_priv *priv, uint8_t reg, const uint8_t *val,
 	return 0;
 }
 
+static int r82xx_write_reg(struct r82xx_priv *priv, uint8_t reg, uint8_t val)
+{
+	return r82xx_write(priv, reg, &val, 1);
+}
+
 static int r82xx_read_cache_reg(struct r82xx_priv *priv, int reg)
 {
 	reg -= REG_SHADOW_START;
@@ -322,21 +327,6 @@ static int r82xx_read_cache_reg(struct r82xx_priv *priv, int reg)
 		return priv->regs[reg];
 	else
 		return -1;
-}
-
-static int r82xx_write_reg(struct r82xx_priv *priv, uint8_t reg, uint8_t val)
-{
-	if (priv->reg_cache && r82xx_read_cache_reg(priv, reg) == val)
-		return 0;
-	if (priv->reg_batch) {
-		shadow_store(priv, reg, &val, 1);
-		if (reg < priv->reg_low)
-			priv->reg_low = reg;
-		if (reg > priv->reg_high)
-			priv->reg_high = reg;
-		return 0;
-	}
-	return r82xx_write(priv, reg, &val, 1);
 }
 
 static int r82xx_write_reg_mask(struct r82xx_priv *priv, uint8_t reg, uint8_t val,
@@ -349,34 +339,7 @@ static int r82xx_write_reg_mask(struct r82xx_priv *priv, uint8_t reg, uint8_t va
 
 	val = (rc & ~bit_mask) | (val & bit_mask);
 
-	return r82xx_write_reg(priv, reg, val);
-}
-
-static int r82xx_write_batch_init(struct r82xx_priv *priv)
-{
-	priv->reg_batch = 0;
-	if (priv->reg_cache) {
-		priv->reg_batch = 1;
-		priv->reg_low = NUM_REGS;
-		priv->reg_high = 0;
-	}
-	return 0;
-}
-
-static int r82xx_write_batch_sync(struct r82xx_priv *priv)
-{
-	int rc, offset, len;
-	if (!priv->reg_cache)
-		return -1;
-	if (!priv->reg_batch)
-		return -1;
-	priv->reg_batch = 0;
-	if (priv->reg_low > priv->reg_high)
-		return 0; /* No work to do */
-	offset = priv->reg_low - REG_SHADOW_START;
-	len = priv->reg_high - priv->reg_low + 1;
-	rc = r82xx_write(priv, priv->reg_low, priv->regs+offset, len);
-	return rc;
+	return r82xx_write(priv, reg, &val, 1);
 }
 
 static uint8_t r82xx_bitrev(uint8_t byte)
@@ -395,6 +358,7 @@ static int r82xx_read(struct r82xx_priv *priv, uint8_t reg, uint8_t *val, int le
 	priv->buf[0] = reg;
 
 	rc = rtlsdr_i2c_write_fn(priv->rtl_dev, priv->cfg->i2c_addr, priv->buf, 1);
+
 	if (rc != 1) {
 		fprintf(stderr, "%s: i2c wr failed=%d reg=%02x len=%d\n",
 			   __FUNCTION__, rc, reg, 1);
@@ -402,7 +366,7 @@ static int r82xx_read(struct r82xx_priv *priv, uint8_t reg, uint8_t *val, int le
 			return rc;
 		return -1;
 	}
-	
+
 	rc = rtlsdr_i2c_read_fn(priv->rtl_dev, priv->cfg->i2c_addr, p, len);
 
 	if (rc != len) {
@@ -501,8 +465,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	uint8_t refdiv2 = 0;
 	uint8_t ni, si, nint, vco_fine_tune, val;
 	uint8_t data[5];
-
-	r82xx_write_batch_init(priv);
 
 	/* Frequency in kHz */
 	freq_khz = (freq + 500) / 1000;
@@ -604,14 +566,6 @@ static int r82xx_set_pll(struct r82xx_priv *priv, uint32_t freq, uint32_t *freq_
 	rc = r82xx_write_reg(priv, 0x15, sdm & 0xff);
 	if (rc < 0)
 		return rc;
-
-	if (priv->reg_batch) {
-		rc = r82xx_write_batch_sync(priv);
-		if (rc < 0) {
-			fprintf(stderr, "[R82XX] Batch error in PLL for %u Hz!\n", freq);
-			return rc;
-		}
-	}
 
 	for (i = 0; i < 2; i++) {
 //		usleep_range(sleep_time, sleep_time + 1000);
@@ -988,11 +942,6 @@ static int update_if_filter(struct r82xx_priv *priv) {
 	return 0;
 }
 
-int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw) {
-	priv->bw = bw;
-	return update_if_filter(priv);
-}
-
 static int r82xx_read_gain(struct r82xx_priv *priv)
 {
 	uint8_t data[4];
@@ -1193,8 +1142,6 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	margin = 1e6 + priv->bw/2;
 	changed_pll_limits = 0;
 
-	r82xx_write_batch_init(priv);
-
 	/* RF input settings */
 
 	rc = r82xx_set_mux(priv, freq);
@@ -1365,10 +1312,6 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	}
 
 	update_if_filter(priv);
-
-	if (priv->reg_batch) {
-		rc |= r82xx_write_batch_sync(priv);
-	}
 
 err:
 	if (rc < 0)
