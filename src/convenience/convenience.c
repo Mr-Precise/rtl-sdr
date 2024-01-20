@@ -334,5 +334,3 @@ int verbose_device_search(char *s)
 	fprintf(stderr, "No matching devices found.\n");
 	return -1;
 }
-
-// vim: tabstop=8:softtabstop=8:shiftwidth=8:noexpandtab

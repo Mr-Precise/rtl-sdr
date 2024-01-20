@@ -1361,7 +1361,6 @@ int r82xx_standby(struct r82xx_priv *priv)
 	if (!priv->init_done)
 		return 0;
 
-	priv->reg_cache = 0;
 	rc = r82xx_write_reg(priv, 0x06, 0xb1);
 	if (rc < 0)
 		return rc;
@@ -1397,7 +1396,6 @@ int r82xx_standby(struct r82xx_priv *priv)
 	/* Force initial calibration */
 	priv->type = -1;
 
-	priv->reg_cache = 1;
 	return rc;
 }
 
@@ -1472,7 +1470,6 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->xtal_cap_sel = XTAL_HIGH_CAP_0P;
 
 	/* Initialize registers */
-	priv->reg_cache = 0;
 	rc = r82xx_write(priv, 0x05,
 			 r82xx_init_array, sizeof(r82xx_init_array));
 
@@ -1489,7 +1486,6 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->pll_high_limit = PLL_INITIAL_HIGH;
 
 	priv->init_done = 1;
-	priv->reg_cache = 1;
 
 err:
 	if (rc < 0)
