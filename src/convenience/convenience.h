@@ -123,15 +123,6 @@ int verbose_gain_set(rtlsdr_dev_t *dev, int gain);
 int verbose_ppm_set(rtlsdr_dev_t *dev, int ppm_error);
 
 /*!
- * Attempts to extract a correction value from eeprom and store it to an int.
- *
- * \param dev the device handle given by rtlsdr_open()
- * \param ppm_error correction value in parts per million (ppm)
- * \return 0 on success
- */
-int verbose_ppm_eeprom(rtlsdr_dev_t *dev, int *ppm_error);
-
-/*!
  * Reset buffer
  *
  * \param dev the device handle given by rtlsdr_open()

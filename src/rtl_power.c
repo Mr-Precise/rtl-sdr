@@ -979,7 +979,6 @@ int main(int argc, char **argv)
 	int dev_index = 0;
 	int dev_given = 0;
 	int ppm_error = 0;
-	int custom_ppm = 0;
 	int interval = 10;
 	int fft_threads = 1;
 	int single = 0;
@@ -1049,7 +1048,6 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			ppm_error = atoi(optarg);
-			custom_ppm = 1;
 			break;
 		case 'r':
 			ms.target_rate = (int)atofs(optarg);
@@ -1151,9 +1149,6 @@ int main(int argc, char **argv)
 		verbose_gain_set(dev, ms.gain);
 	}
 
-	if (!custom_ppm) {
-		verbose_ppm_eeprom(dev, &ppm_error);
-	}
 	verbose_ppm_set(dev, ppm_error);
 
 	rtlsdr_set_bias_tee(dev, enable_biastee);

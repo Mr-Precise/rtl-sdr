@@ -1298,7 +1298,6 @@ int main(int argc, char **argv)
 #endif
 	int r, opt;
 	int dev_given = 0;
-	int custom_ppm = 0;
 	int enable_biastee = 0;
 	dongle_init(&dongle);
 	demod_init(&demod);
@@ -1352,7 +1351,6 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			dongle.ppm_error = atoi(optarg);
-			custom_ppm = 1;
 			break;
 		case 'E':
 			if (strcmp("edge",  optarg) == 0) {
@@ -1483,9 +1481,6 @@ int main(int argc, char **argv)
 	if (enable_biastee)
 		fprintf(stderr, "activated bias-T on GPIO PIN 0\n");
 
-	if (!custom_ppm) {
-		verbose_ppm_eeprom(dongle.dev, &(dongle.ppm_error));
-	}
 	verbose_ppm_set(dongle.dev, dongle.ppm_error);
 
 	if (strcmp(output.filename, "-") == 0) { /* Write samples to stdout */
