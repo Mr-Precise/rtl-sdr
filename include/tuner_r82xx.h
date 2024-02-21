@@ -49,6 +49,7 @@ enum r82xx_chip {
 	CHIP_R828,
 	CHIP_R828S,
 	CHIP_R820C,
+	CHIP_R860,
 };
 
 enum r82xx_tuner_type {

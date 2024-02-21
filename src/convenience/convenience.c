@@ -126,7 +126,7 @@ int nearest_gain(rtlsdr_dev_t *dev, int target_gain)
 	if (count <= 0) {
 		return 0;
 	}
-	gains = malloc(sizeof(int) * count);
+	gains = (int*)malloc(sizeof(int) * count);
 	count = rtlsdr_get_tuner_gains(dev, gains);
 	nearest = gains[0];
 	for (i=0; i<count; i++) {
@@ -168,10 +168,13 @@ int verbose_direct_sampling(rtlsdr_dev_t *dev, int on)
 {
 	int r;
 	r = rtlsdr_set_direct_sampling(dev, on);
-	if (r != 0) {
-		fprintf(stderr, "WARNING: Failed to set direct sampling mode.\n");
-		return r;
-	}
+#ifdef DEBUG
+	fprintf(stderr, "[debug] verbose_direct_sampling: %d\n", r);
+#endif
+	// if (r != 0) {
+	// 	fprintf(stderr, "WARNING: Failed to set direct sampling mode.\n");
+	// 	return r;
+	// }
 	if (on == 0) {
 		fprintf(stderr, "Direct sampling mode disabled.\n");}
 	if (on == 1) {

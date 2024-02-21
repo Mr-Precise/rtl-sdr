@@ -1115,13 +1115,24 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 
 	r |= set_spectrum_inversion(dev, inverted);
 	r |= rtlsdr_set_if_freq(dev, tuner_if, &actual_if);
+#ifdef DEBUG
+	fprintf(stderr, "[debug] rtlsdr_set_center_freq_1: %d\n", r);
+#endif
 
 	dev->freq = freq;
 
-	if (inverted)
+	if (inverted) {
 		dev->effective_freq = tuner_lo - actual_if;
-	else
+#ifdef DEBUG
+		fprintf(stderr, "[debug] tuner_lo: %d (high-side mixing)\n", tuner_lo - actual_if);
+#endif
+	}
+	else {
 		dev->effective_freq = tuner_lo + actual_if;
+#ifdef DEBUG
+		fprintf(stderr, "[debug] actual_if: %d (low-side mixing)\n", tuner_lo + actual_if);
+#endif
+	}
 
 	return r;
 }
@@ -1425,6 +1436,9 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 
 		/* disable spectrum inversion */
 		r |= set_spectrum_inversion(dev, 0);
+#ifdef DEBUG
+		fprintf(stderr, "[debug] rtlsdr_set_direct_sampling1: %d\n", r);
+#endif
 
 		fprintf(stderr, "Enabled direct sampling mode, input %i\n", on);
 		dev->direct_sampling = on;
@@ -1461,9 +1475,15 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 		dev->direct_sampling = 0;
 	}
 
+#ifdef DEBUG
+	fprintf(stderr, "[debug] rtlsdr_set_direct_sampling2: %d\n", r);
+#endif
+
 	/* retune now that we have changed the config */
 	r |= rtlsdr_set_center_freq(dev, dev->freq);
-
+#ifdef DEBUG
+	fprintf(stderr, "[debug] rtlsdr_set_direct_sampling3: %d\n", r);
+#endif
 	return r;
 }
 
@@ -1804,7 +1824,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
-		fprintf(stderr, "Found Rafael Micro R820T or R820T2 tuner\n");
+		fprintf(stderr, "Found Rafael Micro R820T/T2/R860 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
 		rtlsdr_set_gpio_output(dev, 7);
 		rtlsdr_set_gpio_bit(dev, 7, 0); // MUX to R820T
