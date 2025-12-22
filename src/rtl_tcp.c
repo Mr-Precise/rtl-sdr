@@ -104,6 +104,7 @@ void usage(void)
 	printf("\t[-d device index (default: 0)]\n");
 	printf("\t[-P ppm_error (default: 0)]\n");
 	printf("\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n");
+	printf("\t[-D enable direct sampling (default: off) 1 (I), 2 (Q), 3 (no-mod)]\n");
 	exit(1);
 }
 
@@ -395,7 +396,7 @@ int main(int argc, char **argv)
 	int dev_given = 0;
 	int gain = 0;
 	int ppm_error = 0;
-	int custom_ppm = 0;
+	int direct_sampling = 0;
 	struct llist *curelem, *prev;
 	pthread_attr_t attr;
 	void *status;
@@ -413,7 +414,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:T")) != -1) {
+	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:TD:")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -442,10 +443,12 @@ int main(int argc, char **argv)
 			break;
 		case 'P':
 			ppm_error = atoi(optarg);
-			custom_ppm = 1;
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'D':
+			direct_sampling = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -483,10 +486,12 @@ int main(int argc, char **argv)
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
 
+	/* Set direct sampling */
+    if (direct_sampling) {
+        verbose_direct_sampling(dev, direct_sampling);
+    }
+
 	/* Set the tuner error */
-	if (!custom_ppm) {
-		verbose_ppm_eeprom(dev, &ppm_error);
-	}
 	verbose_ppm_set(dev, ppm_error);
 
 	/* Set the sample rate */
