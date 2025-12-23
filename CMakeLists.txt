@@ -60,17 +60,21 @@ include(CpackPacking)
 # Compiler specific setup
 ########################################################################
 if(CMAKE_COMPILER_IS_GNUCC AND NOT WIN32)
-    ADD_DEFINITIONS(-Wall)
-    ADD_DEFINITIONS(-Wextra)
-    ADD_DEFINITIONS(-Wno-unused-parameter)
-    ADD_DEFINITIONS(-Wno-unused)
-    ADD_DEFINITIONS(-Wsign-compare)
-    ADD_DEFINITIONS(-Wdeclaration-after-statement)
+    add_definitions(-Wall)
+    add_definitions(-Wextra)
+    add_definitions(-Wno-unused-parameter)
+    add_definitions(-Wno-unused)
+    add_definitions(-Wsign-compare)
+    add_definitions(-Wdeclaration-after-statement)
     #http://gcc.gnu.org/wiki/Visibility
     add_definitions(-fvisibility=hidden)
+    if(CMAKE_BUILD_TYPE MATCHES Debug)
+        add_definitions(-DDEBUG)
+        message(STATUS "[DEBUG] Enabled debug mode.")
+    endif()
 elseif(MSVC14 OR MSVC14)
 #pthread-w32 issue, timespec is now part of time.h
-    ADD_DEFINITIONS(-D_TIMESPEC_DEFINED)
+    add_definitions(-D_TIMESPEC_DEFINED)
 endif()
 
 ########################################################################

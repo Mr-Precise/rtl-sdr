@@ -32,6 +32,8 @@
 #define R82XX_CHECK_ADDR	0x00
 #define R82XX_CHECK_VAL		0x69
 
+#define R82XX_IF_FREQ		3570000
+
 #define R82XX_DEFAULT_IF_FREQ   6000000
 #define R82XX_DEFAULT_IF_BW     2000000
 
@@ -49,6 +51,7 @@ enum r82xx_chip {
 	CHIP_R828,
 	CHIP_R828S,
 	CHIP_R820C,
+	CHIP_R860,
 };
 
 enum r82xx_tuner_type {

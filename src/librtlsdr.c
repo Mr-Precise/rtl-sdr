@@ -874,11 +874,7 @@ static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_o
 	if (rtlsdr_get_xtal_freq(dev, &rtl_xtal, NULL))
 		return -2;
 
-	if_freq = ((rtl_xtal/2 + (uint64_t)freq * TWO_POW(22)) / rtl_xtal) * (-1);
-	if (if_freq <= -0x200000) {
-		/* fprintf(stderr, "rtl2832_set_if_freq(): %u Hz out of range for downconverter (divisor would be %x)\n", freq, if_freq); */
-		return -2;
-	}
+	if_freq = ((freq * TWO_POW(22)) / rtl_xtal) * (-1);
 
 	tmp = (if_freq >> 16) & 0x3f;
 	r = rtlsdr_demod_write_reg(dev, 1, 0x19, tmp, 1);
@@ -886,8 +882,6 @@ static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_o
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x1a, tmp, 1);
 	tmp = if_freq & 0xff;
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x1b, tmp, 1);
-
-	if (freq_out) *freq_out = ((int64_t)if_freq * rtl_xtal * -1 + TWO_POW(21)) / TWO_POW(22);
 
 	return r;
 }
@@ -1097,12 +1091,14 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 
 	if (dev->direct_sampling) {
 		tuner_lo = 0;
+		r = rtlsdr_set_if_freq(dev, freq, &tuner_lo); // debug (fix error set)?
 	} else if (dev->tuner && dev->tuner->set_freq) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_freq(dev, freq - dev->offs_freq, &tuner_lo);
 		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
+	// strange code
 	if (tuner_lo > freq) {
 		/* high-side mixing, enable spectrum inversion */
 		tuner_if = tuner_lo - freq;
@@ -1116,7 +1112,8 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 	r |= set_spectrum_inversion(dev, inverted);
 	r |= rtlsdr_set_if_freq(dev, tuner_if, &actual_if);
 
-	dev->freq = freq;
+	if (!r)
+		dev->freq = freq;
 
 	if (inverted)
 		dev->effective_freq = tuner_lo - actual_if;
@@ -1411,11 +1408,14 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 			rtlsdr_set_i2c_repeater(dev, 1);
 			r = dev->tuner->exit(dev);
 			rtlsdr_set_i2c_repeater(dev, 0);
-			dev->tuner_initialized = 0;
+			// dev->tuner_initialized = 0;
 		}
 
 		/* disable Zero-IF mode */
 		r |= rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);
+
+		/* disable spectrum inversion */
+		// r |= rtlsdr_demod_write_reg(dev, 1, 0x15, 0x00, 1);
 
 		/* only enable In-phase ADC input */
 		r |= rtlsdr_demod_write_reg(dev, 0, 0x08, 0x4d, 1);
@@ -1434,14 +1434,14 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 			rtlsdr_set_i2c_repeater(dev, 1);
 			r |= dev->tuner->init(dev);
 			rtlsdr_set_i2c_repeater(dev, 0);
-			dev->tuner_initialized = 1;
+			// dev->tuner_initialized = 1;
 		}
 
 		if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
 		    (dev->tuner_type == RTLSDR_TUNER_R828D)) {
 			/* disable Zero-IF mode */
 			r |= rtlsdr_demod_write_reg(dev, 1, 0xb1, 0x1a, 1);
-
+			// r |= rtlsdr_set_if_freq(dev, R82XX_IF_FREQ);
 			/* only enable In-phase ADC input */
 			r |= rtlsdr_demod_write_reg(dev, 0, 0x08, 0x4d, 1);
 
@@ -1804,7 +1804,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
-		fprintf(stderr, "Found Rafael Micro R820T or R820T2 tuner\n");
+		fprintf(stderr, "Found Rafael Micro R820T/T2 or R860 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
 		rtlsdr_set_gpio_output(dev, 7);
 		rtlsdr_set_gpio_bit(dev, 7, 0); // MUX to R820T
