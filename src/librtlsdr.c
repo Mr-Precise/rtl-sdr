@@ -1663,7 +1663,7 @@ int rtlsdr_get_index_by_serial(const char *serial)
 /* Returns true if the manufact_check and product_check strings match what is in the dongles EEPROM */
 int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_check)
 {
-	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0 && strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
+	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0&& strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
 		return 1;
 
 	return 0;
@@ -1798,7 +1798,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
-		fprintf(stderr, "Found Rafael Micro R820T or R820T2 tuner\n");
+		fprintf(stderr, "Found Rafael Micro R820T/T2 or R860 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
 		rtlsdr_set_gpio_output(dev, 7);
 		rtlsdr_set_gpio_bit(dev, 7, 0); // MUX to R820T

@@ -60,17 +60,17 @@ include(CpackPacking)
 # Compiler specific setup
 ########################################################################
 if(CMAKE_COMPILER_IS_GNUCC AND NOT WIN32)
-    ADD_DEFINITIONS(-Wall)
-    ADD_DEFINITIONS(-Wextra)
-    ADD_DEFINITIONS(-Wno-unused-parameter)
-    ADD_DEFINITIONS(-Wno-unused)
-    ADD_DEFINITIONS(-Wsign-compare)
-    ADD_DEFINITIONS(-Wdeclaration-after-statement)
+    add_definitions(-Wall)
+    add_definitions(-Wextra)
+    add_definitions(-Wno-unused-parameter)
+    add_definitions(-Wno-unused)
+    add_definitions(-Wsign-compare)
+    add_definitions(-Wdeclaration-after-statement)
     #http://gcc.gnu.org/wiki/Visibility
     add_definitions(-fvisibility=hidden)
 elseif(MSVC14 OR MSVC14)
 #pthread-w32 issue, timespec is now part of time.h
-    ADD_DEFINITIONS(-D_TIMESPEC_DEFINED)
+    add_definitions(-D_TIMESPEC_DEFINED)
 endif()
 
 ########################################################################
@@ -192,30 +192,30 @@ add_subdirectory(src)
 ########################################################################
 # Create Pkg Config File
 ########################################################################
-FOREACH(inc ${LIBUSB_INCLUDEDIR})
-    LIST(APPEND RTLSDR_PC_CFLAGS "-I${inc}")
-ENDFOREACH(inc)
+foreach(inc ${LIBUSB_INCLUDEDIR})
+    list(APPEND RTLSDR_PC_CFLAGS "-I${inc}")
+endforeach(inc)
 
-FOREACH(lib ${LIBUSB_LIBRARY_DIRS})
-    LIST(APPEND RTLSDR_PC_LIBS "-L${lib}")
-ENDFOREACH(lib)
+foreach(lib ${LIBUSB_LIBRARY_DIRS})
+    list(APPEND RTLSDR_PC_LIBS "-L${lib}")
+endforeach(lib)
 
 # use space-separation format for the pc file
-STRING(REPLACE ";" " " RTLSDR_PC_CFLAGS "${RTLSDR_PC_CFLAGS}")
-STRING(REPLACE ";" " " RTLSDR_PC_LIBS "${RTLSDR_PC_LIBS}")
+string(REPLACE ";" " " RTLSDR_PC_CFLAGS "${RTLSDR_PC_CFLAGS}")
+string(REPLACE ";" " " RTLSDR_PC_LIBS "${RTLSDR_PC_LIBS}")
 
 # unset these vars to avoid hard-coded paths to cross environment
-IF(CMAKE_CROSSCOMPILING)
-    UNSET(RTLSDR_PC_CFLAGS)
-    UNSET(RTLSDR_PC_LIBS)
-ENDIF(CMAKE_CROSSCOMPILING)
+if(CMAKE_CROSSCOMPILING)
+    unset(RTLSDR_PC_CFLAGS)
+    unset(RTLSDR_PC_LIBS)
+endif(CMAKE_CROSSCOMPILING)
 
-CONFIGURE_FILE(
+configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/librtlsdr.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
 @ONLY)
 
-INSTALL(
+install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/librtlsdr.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
 )
@@ -251,5 +251,5 @@ install(
 ########################################################################
 # Print Summary
 ########################################################################
-MESSAGE(STATUS "Building for version: ${VERSION} / ${LIBVER}")
-MESSAGE(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "Building for version: ${VERSION} / ${LIBVER}")
+message(STATUS "Using install prefix: ${CMAKE_INSTALL_PREFIX}")
