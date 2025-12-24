@@ -1091,6 +1091,7 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 
 	if (dev->direct_sampling) {
 		tuner_lo = 0;
+		r = rtlsdr_set_if_freq(dev, freq, &actual_if); // baybe fix error set center freq?
 	} else if (dev->tuner && dev->tuner->set_freq) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_freq(dev, freq - dev->offs_freq, &tuner_lo);
