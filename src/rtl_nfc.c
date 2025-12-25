@@ -26,6 +26,7 @@
 #include <unistd.h>
 #else
 #include <windows.h>
+#include "getopt/getopt.h"
 #endif
 #include <stdint.h>
 #include <math.h>
@@ -59,6 +60,15 @@ int abs8(int x);
 void computeSquares();
 
 void buffCallback(unsigned char* buf, uint32_t len, void* ctx);
+
+void usage(void)
+{
+	fprintf(stderr,
+		"rtl_nfc, a simple NFC decoder\n\n"
+		"\t[-d device_index (default: 0)]\n"
+		"\n");
+	exit(1);
+}
 
 #ifdef _WIN32
 BOOL WINAPI
@@ -245,12 +255,25 @@ int main(int argc, char** argv)
 #endif
 	int dev_index = 0;
 	int dev_given = 0;
-	int r;
+	int r, opt;
 	int gainCount;
 	int allGains[100];
 	uint16_t* amData;
 
 	memset(movingAverageValues, 0x00, MOVING_AVERAGE_MAX * sizeof(uint16_t));
+
+	while ((opt = getopt(argc, argv, "d:h?")) != -1) {
+		switch (opt) {
+		case 'd':
+			dev_index = verbose_device_search(optarg);
+			dev_given = 1;
+			break;
+		case 'h':
+		default:
+			usage();
+			break;
+		}
+	}
 
 	if (!dev_given) {
 		dev_index = verbose_device_search("0");
