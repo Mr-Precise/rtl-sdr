@@ -107,6 +107,15 @@ if(NOT THREADS_FOUND)
 endif()
 
 ########################################################################
+# Confirure version info header
+########################################################################
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/include/version.h
+    @ONLY
+)
+
+########################################################################
 # Create uninstall target
 ########################################################################
 configure_file(

@@ -89,6 +89,7 @@ void usage(void)
 		"\t[   realtek_sdr\t\tRealtek SDR - without DVB compatibility]\n"
 		"\t[-w <filename> write dumped file to device]\n"
 		"\t[-r <filename> dump EEPROM to file]\n"
+		"\t[-v show version]\n"
 		"\t[-h display this help text]\n"
 		"\nUse on your own risk, especially -w!\n");
 	exit(1);
@@ -283,7 +284,7 @@ int main(int argc, char **argv)
 	int ir_endpoint = 0;
 	char ch;
 
-	while ((opt = getopt(argc, argv, "d:m:p:M:P:ns:i:g:w:r:h?")) != -1) {
+	while ((opt = getopt(argc, argv, "d:m:p:M:P:ns:i:g:w:r:hv?")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
@@ -340,6 +341,10 @@ int main(int argc, char **argv)
 			/* fall-through */
 		case 'r':
 			filename = optarg;
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		default:
 			usage();

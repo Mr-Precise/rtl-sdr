@@ -66,6 +66,9 @@ target_include_directories(rtlsdr_shared PUBLIC
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
   )
+target_include_directories(rtlsdr_shared PRIVATE
+  ${PROJECT_BINARY_DIR}/include
+)
 set_target_properties(rtlsdr_shared PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
 set_target_properties(rtlsdr_shared PROPERTIES OUTPUT_NAME rtlsdr)
 # set_target_properties(rtlsdr PROPERTIES SOVERSION ${MAJOR_VERSION})
@@ -90,6 +93,9 @@ target_include_directories(rtlsdr_static PUBLIC
   ${LIBUSB_INCLUDE_DIRS}
   ${THREADS_PTHREADS_INCLUDE_DIR}
   )
+target_include_directories(rtlsdr_static PRIVATE
+  ${PROJECT_BINARY_DIR}/include
+)
 set_property(TARGET rtlsdr_static APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 if(NOT WIN32)
   # Force same library filename for static and shared variants of the library

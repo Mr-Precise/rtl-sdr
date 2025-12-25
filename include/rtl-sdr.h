@@ -448,6 +448,13 @@ RTLSDR_API int rtlsdr_set_bias_tee(rtlsdr_dev_t *dev, int on);
 
 RTLSDR_API int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on);
 
+/*!
+ * Get version info
+ *
+ * \return Shows the library version.
+ */
+RTLSDR_API const char* librtlsdr_get_version(void);
+
 #ifdef __cplusplus
 }
 #endif

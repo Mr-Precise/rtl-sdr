@@ -102,7 +102,8 @@ void usage(void)
 		"\t[-p[seconds] enable PPM error measurement (default: 10 seconds)]\n"
 #endif
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
-		"\t[-S force sync output (default: async)]\n");
+		"\t[-S force sync output (default: async)]\n"
+		"\t[-v show version]\n");
 	exit(1);
 }
 
@@ -426,7 +427,7 @@ int main(int argc, char **argv)
 	int count;
 	int gains[100];
 
-	while ((opt = getopt(argc, argv, "d:s:b:tp::Sh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:s:b:tp::Svh")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -448,6 +449,10 @@ int main(int argc, char **argv)
 			break;
 		case 'S':
 			sync_mode = 1;
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		case 'h':
 		default:
