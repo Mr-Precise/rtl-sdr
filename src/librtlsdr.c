@@ -50,6 +50,7 @@
 #include "tuner_fc2580.h"
 #include "tuner_max2112.h"
 #include "tuner_r82xx.h"
+#include "version.h"
 
 typedef struct rtlsdr_tuner_iface {
 	/* tuner interface */
@@ -1667,6 +1668,11 @@ int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_che
 		return 1;
 
 	return 0;
+}
+
+const char* librtlsdr_get_version(void)
+{
+    return RTL_SDR_VERSION_STRING;
 }
 
 int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)

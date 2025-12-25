@@ -231,6 +231,7 @@ void usage(void)
 		"\t    offset: enable offset tuning\n"
 		"\t    wav:    generate WAV header\n"
 		"\t    pad:    pad output with zeros (broken)\n"
+		"\t[-v show version]\n"
 		"\tfilename ('-' means stdout)\n"
 		"\t    omitting the filename also uses stdout\n\n"
 		"Experimental options:\n"
@@ -1306,7 +1307,7 @@ int main(int argc, char **argv)
 	output_init(&output);
 	controller_init(&controller);
 
-	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:hT")) != -1) {
+	while ((opt = getopt(argc, argv, "d:f:g:s:b:l:o:t:r:p:E:F:A:M:hTv")) != -1) {
 		switch (opt) {
 		case 'd':
 			dongle.dev_index = verbose_device_search(optarg);
@@ -1414,6 +1415,10 @@ int main(int argc, char **argv)
 			break;
 		case 'T':
 			enable_biastee = 1;
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		case 'h':
 		default:

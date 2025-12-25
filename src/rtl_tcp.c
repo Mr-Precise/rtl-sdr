@@ -105,6 +105,7 @@ void usage(void)
 	printf("\t[-P ppm_error (default: 0)]\n");
 	printf("\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n");
 	printf("\t[-D enable direct sampling (default: off) 1 (I), 2 (Q), 3 (no-mod)]\n");
+	printf("\t[-v show version]\n");
 	exit(1);
 }
 
@@ -414,7 +415,7 @@ int main(int argc, char **argv)
 	struct sigaction sigact, sigign;
 #endif
 
-	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:TD:")) != -1) {
+	while ((opt = getopt(argc, argv, "a:p:f:g:s:b:n:d:P:TD:v")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -449,6 +450,10 @@ int main(int argc, char **argv)
 			break;
 		case 'D':
 			direct_sampling = atoi(optarg);
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		default:
 			usage();

@@ -66,6 +66,7 @@ void usage(void)
 	fprintf(stderr,
 		"rtl_nfc, a simple NFC decoder\n\n"
 		"\t[-d device_index (default: 0)]\n"
+		"\t[-v show version]\n"
 		"\n");
 	exit(1);
 }
@@ -262,11 +263,15 @@ int main(int argc, char** argv)
 
 	memset(movingAverageValues, 0x00, MOVING_AVERAGE_MAX * sizeof(uint16_t));
 
-	while ((opt = getopt(argc, argv, "d:h?")) != -1) {
+	while ((opt = getopt(argc, argv, "d:hv?")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
 			dev_given = 1;
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		case 'h':
 		default:
