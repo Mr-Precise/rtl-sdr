@@ -1,0 +1,21 @@
+name: 🤔 Other
+description: Questions, discussions, or anything else
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask your question or share your thoughts here.
+  - type: textarea
+    id: description
+    attributes:
+      label: What's on your mind?
+      description: Describe your question or topic
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any relevant information
