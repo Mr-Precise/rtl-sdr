@@ -54,7 +54,7 @@ struct reg_field_ops {
 uint32_t reg_field_read(struct reg_field_ops *ops, struct reg_field *field);
 int reg_field_write(struct reg_field_ops *ops, struct reg_field *field, uint32_t val);
 int reg_field_cmd(struct cmd_state *cs, enum cmd_op op,
-const char *cmd, int argc, char **argv,
-struct reg_field_ops *ops);
+		  const char *cmd, int argc, char **argv,
+		  struct reg_field_ops *ops);
 
 #endif

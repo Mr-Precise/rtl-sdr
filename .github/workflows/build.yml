@@ -1,10 +1,7 @@
 name: rtl-sdr CI cmake build
 
 on:
-  push:
-    branches: [ main, devel ]
-  pull_request:
-    branches: [ main, devel ]
+  workflow_dispatch:
 
 env:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -14,7 +11,7 @@ jobs:
       runs-on: ubuntu-latest
 
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install prerequisites
         run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
       - name: run_cmake_build
@@ -26,16 +23,16 @@ jobs:
       - name: move tar.gz to Generated Packages
         run: mv rtl-sdr_build_ubuntu_latest-amd64.tar.gz build/Generated_Packages/
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ubuntu_latest_build
           path: build/Generated_Packages/
 
-    build_ubuntu-amd64_20_04:
-      runs-on: ubuntu-20.04
+    build_ubuntu-amd64_22_04:
+      runs-on: ubuntu-22.04
 
       steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install prerequisites
         run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
       - name: run_cmake_build
@@ -43,58 +40,50 @@ jobs:
       - name: Generate debian package
         run: cd build && cpack -G DEB
       - name: Compress binaries
-        run: tar zcvf rtl-sdr_build_ubuntu_20.04-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
+        run: tar zcvf rtl-sdr_build_ubuntu_22.04-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
       - name: move tar.gz to Generated Packages
-        run: mv rtl-sdr_build_ubuntu_20.04-amd64.tar.gz build/Generated_Packages/
+        run: mv rtl-sdr_build_ubuntu_22.04-amd64.tar.gz build/Generated_Packages/
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: ubuntu_20_04_build
+          name: ubuntu_22_04_build
           path: build/Generated_Packages/
 
     build_macos_latest:
       runs-on: macos-latest
 
       steps:
-      - uses: actions/checkout@v3
-      #- name: reinstall libusb
-      #  run: brew reinstall libusb
-      - name: install pkg-config
-        run: brew install pkg-config
+      - uses: actions/checkout@v4
       - name: run_cmake_build
-        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos_intel
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos
       - name: Compress binaries
-        run: tar zcvf rtl-sdr_build_macos_intel-latest.tar.gz --directory=build rtl-sdr_build_macos_intel
+        run: tar zcvf rtl-sdr_build_macos-latest.tar.gz --directory=build rtl-sdr_build_macos
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos_latest_build
-          path: rtl-sdr_build_macos_intel-latest.tar.gz
+          path: rtl-sdr_build_macos-latest.tar.gz
 
-    build_macos_11:
-      runs-on: macos-11
+    build_macos_14:
+      runs-on: macos-14
 
       steps:
-      - uses: actions/checkout@v3
-      #- name: reinstall libusb
-      #  run: brew reinstall libusb
-      - name: install pkg-config
-        run: brew install pkg-config
+      - uses: actions/checkout@v4
       - name: run_cmake_build
-        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos_intel
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos
       - name: Compress binaries
-        run: tar zcvf rtl-sdr_build_macos_11_intel.tar.gz --directory=build rtl-sdr_build_macos_intel
+        run: tar zcvf rtl-sdr_build_macos_14.tar.gz --directory=build rtl-sdr_build_macos
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: macos_11_build
-          path: rtl-sdr_build_macos_11_intel.tar.gz
+          name: macos_14_build
+          path: rtl-sdr_build_macos_14.tar.gz
 
-    build_win_2019_64:
-      runs-on: windows-2019
+    build_win_2022_64:
+      runs-on: windows-2022
 
       steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
 
         - name: Create Build Environment
           run: cmake -E make_directory ${{runner.workspace}}/build
@@ -119,22 +108,22 @@ jobs:
           working-directory: ${{runner.workspace}}/build
           run: cpack -G NSIS64
         - name: Compress binaries
-          run: 7z a rtl-sdr_build_VS2019_Win64.zip ${{runner.workspace}}/build/rtl-sdr-msvc142-Win64
+          run: 7z a rtl-sdr_build_VS2022_Win64.zip ${{runner.workspace}}/build/rtl-sdr-msvc142-Win64
         - name: move zip to Packages
-          run: mv rtl-sdr_build_VS2019_Win64.zip ${{runner.workspace}}/build/Generated_Packages/
+          run: mv rtl-sdr_build_VS2022_Win64.zip ${{runner.workspace}}/build/Generated_Packages/
         - name: 'Upload Artifact'
-          uses: actions/upload-artifact@v3
+          uses: actions/upload-artifact@v4
           with:
-            name: windows_2019_build
+            name: windows_2022_build
             path: ${{runner.workspace}}/build/Generated_Packages/
 
     create_archive:
-      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_20_04', 'build_macos_latest', 'build_macos_11', 'build_win_2019_64']
+      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_22_04', 'build_macos_latest', 'build_macos_14', 'build_win_2022_64']
       runs-on: ubuntu-latest
 
       steps:
       - name: Extract All Builds
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Create Archive
         run: >
@@ -142,14 +131,14 @@ jobs:
           mkdir rtl-sdr_all && 
           tar zcvf rtl-sdr_build_ubuntu_latest-amd64.tar.gz ubuntu_latest_build && 
           mv rtl-sdr_build_ubuntu_latest-amd64.tar.gz rtl-sdr_all/ && 
-          tar zcvf rtl-sdr_build_ubuntu_20.04-amd64.tar.gz ubuntu_20_04_build && 
-          mv rtl-sdr_build_ubuntu_20.04-amd64.tar.gz rtl-sdr_all/ && 
-          mv macos_latest_build/rtl-sdr_build_macos_intel-latest.tar.gz rtl-sdr_all/ && 
-          mv macos_11_build/rtl-sdr_build_macos_11_intel.tar.gz rtl-sdr_all/ && 
-          7z a rtl-sdr_build_VS2019_Win64.zip -r windows_2019_build && 
-          mv rtl-sdr_build_VS2019_Win64.zip rtl-sdr_all/
+          tar zcvf rtl-sdr_build_ubuntu_22.04-amd64.tar.gz ubuntu_22_04_build && 
+          mv rtl-sdr_build_ubuntu_22.04-amd64.tar.gz rtl-sdr_all/ && 
+          mv macos_latest_build/rtl-sdr_build_macos-latest.tar.gz rtl-sdr_all/ && 
+          mv macos_14_build/rtl-sdr_build_macos_14.tar.gz rtl-sdr_all/ && 
+          7z a rtl-sdr_build_VS2022_Win64.zip -r windows_2022_build && 
+          mv rtl-sdr_build_VS2022_Win64.zip rtl-sdr_all/
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: rtl-sdr_all
           path: rtl-sdr_all/
@@ -157,11 +146,10 @@ jobs:
     update_nightly_release:
       needs: [create_archive]
       runs-on: ubuntu-latest
-      if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       steps:
       - name: Extract All Builds
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Update Nightly
         run: gh release upload nightly rtl-sdr_all/* -R ${{github.repository}} --clobber

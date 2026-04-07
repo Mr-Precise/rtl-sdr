@@ -48,7 +48,8 @@ void usage(void)
 		"\t[-r read pin (in input mode)]\n"
 		"\t[-w write pin (in output mode)]\n"
 		"\t[-s read all GPIO pins status (0 = write, 1 = read ?? )]\n"
-		"\t[-R read all GPIO pins ?? ]\n");
+		"\t[-R read all GPIO pins ?? ]\n"
+		"\t[-v show version]\n");
 	exit(1);
 }
 
@@ -65,7 +66,7 @@ int main(int argc, char **argv)
 	int gpio_pin = 0;
 	int device_count;
 
-	while ((opt = getopt(argc, argv, "d:b:w:g:srRh?")) != -1) {
+	while ((opt = getopt(argc, argv, "d:b:w:g:srRhv?")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = verbose_device_search(optarg);
@@ -87,6 +88,10 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			req_status = 1;
+			break;
+		case 'v':
+			printf("librtlsdr version: %s\n", librtlsdr_get_version());
+			return 0;
 			break;
 		default:
 			usage();

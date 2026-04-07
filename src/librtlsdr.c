@@ -40,12 +40,6 @@
 #define LIBUSB_CALL
 #endif
 
-/* libusb < 1.0.9 doesn't have libusb_handle_events_timeout_completed */
-#ifndef HAVE_LIBUSB_HANDLE_EVENTS_TIMEOUT_COMPLETED
-#define libusb_handle_events_timeout_completed(ctx, tv, c) \
-	libusb_handle_events_timeout(ctx, tv)
-#endif
-
 /* two raised to the power of n */
 #define TWO_POW(n)		((double)(1ULL<<(n)))
 
@@ -56,6 +50,7 @@
 #include "tuner_fc2580.h"
 #include "tuner_max2112.h"
 #include "tuner_r82xx.h"
+#include "version.h"
 
 typedef struct rtlsdr_tuner_iface {
 	/* tuner interface */
@@ -133,11 +128,12 @@ struct rtlsdr_dev {
 	unsigned int xfer_errors;
 	int rc_active;
 	int tuner_initialized;
-	int i2c_repeater_on;
 	int spectrum_inversion;
 	char manufact[256];
 	char product[256];
 };
+
+static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out);
 
 /* generic tuner interface functions, shall be moved to the tuner implementations */
 /* which has been done for the MAX2112 */
@@ -264,8 +260,17 @@ int r820t_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 }
 
 int r820t_set_bw(void *dev, int bw) {
+	int r;
+	uint32_t actual_if = 0;
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
-	return r82xx_set_bw(&devt->r82xx_p, bw);
+
+	r = r82xx_set_bandwidth(&devt->r82xx_p, bw, devt->rate);
+	if(r < 0)
+		return r;
+	r = rtlsdr_set_if_freq(devt, r, &actual_if);
+	if (r)
+		return r;
+	return rtlsdr_set_center_freq(devt, devt->freq);
 }
 
 int r820t_set_gain(void *dev, int gain) {
@@ -736,10 +741,6 @@ int rtlsdr_set_gpio_byte(rtlsdr_dev_t *dev, int val)
 
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
-	if (on == dev->i2c_repeater_on)
-		return;
-	on = !!on; /* values +2 to force on */
-	dev->i2c_repeater_on = on;
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
 }
 
@@ -853,7 +854,7 @@ int rtlsdr_deinit_baseband(rtlsdr_dev_t *dev)
 	return r;
 }
 
-static int rtl2832_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out)
+static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_out)
 {
 	uint32_t rtl_xtal;
 	int32_t if_freq;
@@ -1108,7 +1109,7 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 	}
 
 	r |= set_spectrum_inversion(dev, inverted);
-	r |= rtl2832_set_if_freq(dev, tuner_if, &actual_if);
+	r |= rtlsdr_set_if_freq(dev, tuner_if, &actual_if);
 
 	dev->freq = freq;
 
@@ -1257,6 +1258,7 @@ int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 	if (dev->tuner->set_gain) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_gain((void *)dev, gain);
+		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
 	if (!r)
@@ -1285,6 +1287,7 @@ int rtlsdr_set_tuner_if_gain(rtlsdr_dev_t *dev, int stage, int gain)
 	if (dev->tuner->set_if_gain) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_if_gain(dev, stage, gain);
+		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
 	return r;
@@ -1300,6 +1303,7 @@ int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int mode)
 	if (dev->tuner->set_gain_mode) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_gain_mode((void *)dev, mode);
+		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
 	return r;
@@ -1675,10 +1679,15 @@ int rtlsdr_get_index_by_serial(const char *serial)
 /* Returns true if the manufact_check and product_check strings match what is in the dongles EEPROM */
 int rtlsdr_check_dongle_model(void *dev, char *manufact_check, char *product_check)
 {
-	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0 && strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
+	if ((strcmp(((rtlsdr_dev_t *)dev)->manufact, manufact_check) == 0&& strcmp(((rtlsdr_dev_t *)dev)->product, product_check) == 0))
 		return 1;
 
 	return 0;
+}
+
+const char* librtlsdr_get_version(void)
+{
+    return RTL_SDR_VERSION_STRING;
 }
 
 int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
@@ -1871,7 +1880,7 @@ int rtlsdr_setup(rtlsdr_dev_t **out_dev, rtlsdr_dev_t *dev) {
 
 	reg = rtlsdr_i2c_read_reg(dev, R820T_I2C_ADDR, R82XX_CHECK_ADDR);
 	if (reg == R82XX_CHECK_VAL) {
-		fprintf(stderr, "Found Rafael Micro R820T or R820T2 tuner\n");
+		fprintf(stderr, "Found Rafael Micro R820T/T2 or R860 tuner\n");
 		dev->tuner_type = RTLSDR_TUNER_R820T;
 		rtlsdr_set_gpio_output(dev, 7);
 		rtlsdr_set_gpio_bit(dev, 7, 0); // MUX to R820T
@@ -2047,7 +2056,6 @@ static void LIBUSB_CALL _libusb_callback(struct libusb_transfer *xfer)
 		    LIBUSB_TRANSFER_NO_DEVICE == xfer->status) {
 #endif
 			dev->dev_lost = 1;
-			rtlsdr_cancel_async(dev);
 			fprintf(stderr, "cb transfer status: %d, "
 				"canceling...\n", xfer->status);
 #ifndef _WIN32
@@ -2240,6 +2248,11 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			break;
 		}
 
+		/* Check if device was lost due to transfer errors */
+		if (dev->dev_lost && RTLSDR_RUNNING == dev->async_status) {
+			dev->async_status = RTLSDR_CANCELING;
+		}
+
 		if (RTLSDR_CANCELING == dev->async_status) {
 			next_status = RTLSDR_INACTIVE;
 
@@ -2282,6 +2295,9 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 	_rtlsdr_free_async_buffers(dev);
 
 	dev->async_status = next_status;
+
+	if (dev->dev_lost)
+		return -1;
 
 	return r;
 }
@@ -2358,11 +2374,6 @@ int rtlsdr_set_bias_tee_gpio(rtlsdr_dev_t *dev, int gpio, int on)
 {
 	if (!dev)
 		return -1;
-
-	#if LOG_API_CALLS
-	fprintf(stderr, "LOG: rtlsdr_set_bias_tee_gpio(gpio %d, on %d)\n",
-		gpio, on);
-	#endif
 
 	rtlsdr_set_gpio_output(dev, gpio);
 	rtlsdr_set_gpio_bit(dev, gpio, on);

@@ -1,53 +1,35 @@
 name: 🐞 Bug Report
-description: Create a report to help us improve
-labels:
-  - bug
+description: Report a problem with rtl-sdr
+title: "[Bug]: "
+labels: ["bug"]
 body:
-  - type: textarea
-    id: description
+  - type: markdown
     attributes:
-      label: Describe the bug
-      description: A clear and concise description of what the bug is.
-    validations:
-      required: true
-  - type: textarea
-    id: reproduce
-    attributes:
-      label: Reproduction steps
-      description: Steps to reproduce the bug.
       value: |
-        1.
-        2.
-        3.
+        Please describe the problem clearly. What happened? What did you expect to happen instead?
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this issue?
+      placeholder: |
+        1. 
+        2. 
+        3. 
     validations:
       required: true
   - type: textarea
-    id: expected
+    id: environment
     attributes:
-      label: Expected behavior
-      description: What did you expect to happen?
-    validations:
-      required: false
+      label: Environment
+      description: Please provide details about your setup
+      placeholder: |
+        - OS: 
+        - rtl-sdr version / commit: 
+        - Device (if known):
+      render: markdown
   - type: textarea
-    id: actual
-    attributes:
-      label: Actual behavior
-      description: What actually happened?
-    validations:
-      required: false
-  - type: textarea
-    id: additional-info
+    id: additional
     attributes:
       label: Additional information
-      description: |
-        Add any other context about the problem here.
-        Screenshots, logs, or other files are also accepted.
-  - type: checkboxes
-    id: terms
-    attributes:
-      label: Please confirm the following
-      options:
-        - label:
-            "[I searched the issues](https://github.com/Mr-Precise/rtl-sdr/issues) to make sure
-            this bug has not been reported before."
-          required: true
+      description: Logs, screenshots, or anything else that might help

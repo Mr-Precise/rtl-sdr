@@ -49,6 +49,7 @@ enum r82xx_chip {
 	CHIP_R828,
 	CHIP_R828S,
 	CHIP_R820C,
+	CHIP_R860,
 };
 
 enum r82xx_tuner_type {
@@ -127,6 +128,6 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain);
 int r82xx_set_nomod(struct r82xx_priv *priv);
 int r82xx_set_dither(struct r82xx_priv *priv, int dither);
-int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw);
+int r82xx_set_bandwidth(struct r82xx_priv *priv, int bw, uint32_t rate);
 
 #endif
