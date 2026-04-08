@@ -136,12 +136,26 @@ if (INSTALL_UDEV_RULES)
 set(UDEV_RULES_PATH "/etc/udev/rules.d" CACHE STRING "Target directory for udev rule installation.")
     install (
         FILES "${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr.rules"
-        DESTINATION ${UDEV_RULES_PATH}
+        DESTINATION "${UDEV_RULES_PATH}"
         COMPONENT "udev"
     )
 else (INSTALL_UDEV_RULES)
     message (STATUS "Udev rules not being installed, install them with -DINSTALL_UDEV_RULES=ON")
 endif (INSTALL_UDEV_RULES)
+
+########################################################################
+# Install modprobe config (for old kernels or non-udev systems)
+########################################################################
+option(INSTALL_MODPROBE_DENYLIST "Install modprobe denylist for RTL-SDR" OFF)
+if (INSTALL_MODPROBE_DENYLIST)
+set(MODPROBE_PATH "/etc/modprobe.d" CACHE STRING "Target directory for modprobe denylist installation.")
+    message(STATUS "ENABLED modprobe denylist installation (for old kernels or non-udev systems): ${MODPROBE_PATH}")
+    install (
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/rtlsdr.conf"
+        DESTINATION "${MODPROBE_PATH}"
+        COMPONENT "config"
+    )
+endif (INSTALL_MODPROBE_DENYLIST)
 
 ########################################################################
 # Detach kernel driver
