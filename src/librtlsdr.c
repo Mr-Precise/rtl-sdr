@@ -1083,7 +1083,7 @@ static int set_spectrum_inversion(rtlsdr_dev_t *dev, int inverted)
 int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 {
 	int r = -1;
-	uint32_t tuner_lo;
+	uint32_t tuner_lo = 0;
 	uint32_t tuner_if, actual_if = 0;
 	int inverted;
 
@@ -1091,11 +1091,16 @@ int rtlsdr_set_center_freq(rtlsdr_dev_t *dev, uint32_t freq)
 		return -1;
 
 	if (dev->direct_sampling) {
+		r = 0;
 		tuner_lo = 0;
-	} else if (dev->tuner && dev->tuner->set_freq) {
+	} else if (dev->tuner->set_freq) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_freq(dev, freq - dev->offs_freq, &tuner_lo);
 		rtlsdr_set_i2c_repeater(dev, 0);
+		if (r < 0)
+			return r;
+	} else {
+		return -1;
 	}
 
 	if (tuner_lo > freq) {
