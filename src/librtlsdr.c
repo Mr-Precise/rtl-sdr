@@ -116,6 +116,7 @@ struct rtlsdr_dev {
 	uint32_t effective_freq; /* Hz */
 	int corr; /* ppm */
 	int gain; /* tenth dB */
+	int gain_mode; /* 0 = auto, 1 = manual */
 	struct e4k_state e4k_s;
 	struct r82xx_config r82xx_c;
 	struct r82xx_priv r82xx_p;
@@ -1242,13 +1243,15 @@ int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
 	if (!dev || !dev->tuner)
 		return -1;
 
+	dev->bw = bw;
+
+	if (dev->direct_sampling)
+		return 0;
+
 	if (dev->tuner->set_bw) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_bw(dev, bw > 0 ? bw : dev->rate);
 		rtlsdr_set_i2c_repeater(dev, 0);
-		if (r)
-			return r;
-		dev->bw = bw;
 	}
 	return r;
 }
@@ -1260,16 +1263,24 @@ int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 	if (!dev || !dev->tuner)
 		return -1;
 
+	if (dev->direct_sampling) {
+		dev->gain = gain;
+		dev->gain_mode = 1;
+		return 0;
+	}
+
 	if (dev->tuner->set_gain) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_gain((void *)dev, gain);
 		rtlsdr_set_i2c_repeater(dev, 0);
 	}
 
-	if (!r)
+	if (!r) {
 		dev->gain = gain;
-	else
+		dev->gain_mode = 1;
+	} else {
 		dev->gain = 0;
+	}
 
 	return r;
 }
@@ -1305,11 +1316,19 @@ int rtlsdr_set_tuner_gain_mode(rtlsdr_dev_t *dev, int mode)
 	if (!dev || !dev->tuner)
 		return -1;
 
+	if (dev->direct_sampling) {
+		dev->gain_mode = mode;
+		return 0;
+	}
+
 	if (dev->tuner->set_gain_mode) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		r = dev->tuner->set_gain_mode((void *)dev, mode);
 		rtlsdr_set_i2c_repeater(dev, 0);
 	}
+
+	if (!r)
+		dev->gain_mode = mode;
 
 	return r;
 }
@@ -1343,7 +1362,7 @@ int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 
 	dev->rate = (uint32_t)real_rate;
 
-	if (dev->tuner && dev->tuner->set_bw) {
+	if (dev->tuner && dev->tuner->set_bw && !dev->direct_sampling) {
 		rtlsdr_set_i2c_repeater(dev, 1);
 		dev->tuner->set_bw(dev, dev->bw > 0 ? dev->bw : dev->rate);
 		rtlsdr_set_i2c_repeater(dev, 0);
@@ -1396,6 +1415,7 @@ int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 {
 	int r = 0;
+	uint32_t bw;
 
 	if (!dev)
 		return -1;
@@ -1430,13 +1450,6 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 		dev->direct_sampling = on;
 	} else {
 		/* disable direct sampling */
-		if (dev->tuner && dev->tuner->init) {
-			rtlsdr_set_i2c_repeater(dev, 1);
-			r |= dev->tuner->init(dev);
-			rtlsdr_set_i2c_repeater(dev, 0);
-			dev->tuner_initialized = 1;
-		}
-
 		if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
 		    (dev->tuner_type == RTLSDR_TUNER_R828D)) {
 			/* disable Zero-IF mode */
@@ -1459,6 +1472,32 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 
 		fprintf(stderr, "Disabled direct sampling mode\n");
 		dev->direct_sampling = 0;
+
+		if (dev->tuner && dev->tuner->init) {
+			rtlsdr_set_i2c_repeater(dev, 1);
+			r |= dev->tuner->init(dev);
+			rtlsdr_set_i2c_repeater(dev, 0);
+			dev->tuner_initialized = 1;
+		}
+
+		bw = dev->bw > 0 ? dev->bw : dev->rate;
+		if (dev->tuner && dev->tuner->set_bw && bw > 0) {
+			rtlsdr_set_i2c_repeater(dev, 1);
+			r |= dev->tuner->set_bw(dev, bw);
+			rtlsdr_set_i2c_repeater(dev, 0);
+		}
+
+		if (dev->tuner && dev->tuner->set_gain_mode) {
+			rtlsdr_set_i2c_repeater(dev, 1);
+			r |= dev->tuner->set_gain_mode((void *)dev, dev->gain_mode);
+			rtlsdr_set_i2c_repeater(dev, 0);
+		}
+
+		if (dev->gain_mode && dev->tuner && dev->tuner->set_gain) {
+			rtlsdr_set_i2c_repeater(dev, 1);
+			r |= dev->tuner->set_gain((void *)dev, dev->gain);
+			rtlsdr_set_i2c_repeater(dev, 0);
+		}
 	}
 
 	/* retune now that we have changed the config */
