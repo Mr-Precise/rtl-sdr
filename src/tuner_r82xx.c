@@ -1183,6 +1183,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	uint8_t cable_2_in;
 	uint8_t cable_1_in;
 	uint8_t air_in;
+	int pll_error;
 	
 	is_rtlsdr_blog_v4 = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4");
 	is_rtlsdr_blog_v4l = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4L");
@@ -1326,7 +1327,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	/* IF generation settings */
 
  retune:
-	if (freq < 14.4e6 && freq < (priv->pll_low_limit - 14.4e6)) {
+	if (!is_rtlsdr_blog_v4 && !is_rtlsdr_blog_v4l && freq < 14.4e6 && freq < (priv->pll_low_limit - 14.4e6)) {
 		/* Previously "no-mod direct sampling" - confuse the VCO/PLL
 		 * sufficiently that we get the HF signal leaking through
 		 * the tuner, then sample that directly.
@@ -1348,7 +1349,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		if (lo_freq_out) *lo_freq_out = 0;
 	} else {
 		/* Normal tuning case */
-		int pll_error = 0;
+		pll_error = 0;
 
 		if (priv->pll_off) {
 			/* Crossed the 14.4MHz boundary, power the VCO back on */
@@ -1372,14 +1373,14 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		 */
 
 		if (lo_freq < priv->pll_low_limit) {
-			if (freq > (priv->pll_low_limit-margin) && freq < (priv->pll_low_limit+margin)) {
-				lo_freq = freq + margin;
+			if (upconvert_freq > (priv->pll_low_limit-margin) && upconvert_freq < (priv->pll_low_limit+margin)) {
+				lo_freq = upconvert_freq + margin;
 			} else {
 				lo_freq = priv->pll_low_limit;
 			}
 		} else if (lo_freq > priv->pll_high_limit) {
-			if (freq > (priv->pll_high_limit-margin) && freq < (priv->pll_high_limit+margin)) {
-				lo_freq = freq - margin;
+			if (upconvert_freq > (priv->pll_high_limit-margin) && upconvert_freq < (priv->pll_high_limit+margin)) {
+				lo_freq = upconvert_freq - margin;
 			} else {
 				lo_freq = priv->pll_high_limit;
 			}
@@ -1408,6 +1409,18 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		}
 
 		rc |= pll_error;
+
+		/* If Blog V4 / V4L upconverter was used (HF band shifted up by 28.8 MHz),
+		 * the virtual LO corresponding to the original unshifted RF frequency
+		 * is (physical_LO - 28.8 MHz).
+		 * We adjust lo_freq_out so that librtlsdr sees the correct virtual LO
+		 * and tunes the RTL2832 DDC to the proper IF (approx. 3.57 MHz).
+		 */
+		if ((is_rtlsdr_blog_v4 || is_rtlsdr_blog_v4l) && (freq < MHZ(28.8))) {
+			if (lo_freq_out && !pll_error) {
+				*lo_freq_out -= MHZ(28.8);
+			}
+		}
 	}
 
 	if (changed_pll_limits) {
@@ -1416,14 +1429,14 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 
 	/* IF filter / image rejection settings */
 
-	if (lo_freq > freq) {
+	if (lo_freq > upconvert_freq) {
 		/* high-side mixing, image negative */
 		rc |= r82xx_write_reg_mask(priv, 0x07, 0x00, 0x80);
-		priv->if_filter_freq = lo_freq - freq;
+		priv->if_filter_freq = lo_freq - upconvert_freq;
 	} else {
 		/* low-side mixing, image positive */
 		rc |= r82xx_write_reg_mask(priv, 0x07, 0x80, 0x80);
-		priv->if_filter_freq = freq - lo_freq;
+		priv->if_filter_freq = upconvert_freq - lo_freq;
 	}
 
 	update_if_filter(priv);
