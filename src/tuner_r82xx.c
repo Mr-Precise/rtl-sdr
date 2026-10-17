@@ -1619,6 +1619,8 @@ int r82xx_init(struct r82xx_priv *priv)
 
 	priv->pll_low_limit = PLL_INITIAL_LOW;
 	priv->pll_high_limit = PLL_INITIAL_HIGH;
+	priv->pll_off = 0;
+	priv->input = 0;
 
 	priv->init_done = 1;
 	priv->reg_cache = 1;
