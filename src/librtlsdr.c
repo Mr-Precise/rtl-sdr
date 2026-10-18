@@ -50,7 +50,7 @@
 #include "tuner_fc2580.h"
 #include "tuner_max2112.h"
 #include "tuner_r82xx.h"
-#include "version.h"
+#include "rtlsdr_version.h"
 
 typedef struct rtlsdr_tuner_iface {
 	/* tuner interface */

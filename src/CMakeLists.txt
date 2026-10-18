@@ -62,12 +62,10 @@ endif(APPLE)
 
 target_include_directories(rtlsdr_shared PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
   $<BUILD_INTERFACE:${LIBUSB_INCLUDE_DIRS}>
   $<BUILD_INTERFACE:${THREADS_PTHREADS_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
-)
-target_include_directories(rtlsdr_shared PRIVATE
-  ${PROJECT_BINARY_DIR}/include
 )
 set_target_properties(rtlsdr_shared PROPERTIES DEFINE_SYMBOL "rtlsdr_EXPORTS")
 set_target_properties(rtlsdr_shared PROPERTIES OUTPUT_NAME rtlsdr)
@@ -88,12 +86,10 @@ if(LINK_RTL_APPS_WITH_STATIC_LIB)
 endif()
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
   $<BUILD_INTERFACE:${LIBUSB_INCLUDE_DIRS}>
   $<BUILD_INTERFACE:${THREADS_PTHREADS_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
-)
-target_include_directories(rtlsdr_static PRIVATE
-  ${PROJECT_BINARY_DIR}/include
 )
 set_property(TARGET rtlsdr_static APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 if(NOT WIN32)
