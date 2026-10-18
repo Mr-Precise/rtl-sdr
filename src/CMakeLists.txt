@@ -62,10 +62,10 @@ endif(APPLE)
 
 target_include_directories(rtlsdr_shared PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${LIBUSB_INCLUDE_DIRS}>
+  $<BUILD_INTERFACE:${THREADS_PTHREADS_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
-  ${LIBUSB_INCLUDE_DIRS}
-  ${THREADS_PTHREADS_INCLUDE_DIR}
-  )
+)
 target_include_directories(rtlsdr_shared PRIVATE
   ${PROJECT_BINARY_DIR}/include
 )
@@ -89,10 +89,10 @@ if(LINK_RTL_APPS_WITH_STATIC_LIB)
 endif()
 target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${LIBUSB_INCLUDE_DIRS}>
+  $<BUILD_INTERFACE:${THREADS_PTHREADS_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
-  ${LIBUSB_INCLUDE_DIRS}
-  ${THREADS_PTHREADS_INCLUDE_DIR}
-  )
+)
 target_include_directories(rtlsdr_static PRIVATE
   ${PROJECT_BINARY_DIR}/include
 )
@@ -102,6 +102,10 @@ if(NOT WIN32)
   set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
 endif()
 generate_export_header(rtlsdr_static)
+
+add_library(rtlsdr::rtlsdr ALIAS rtlsdr_shared)
+add_library(rtlsdr::rtlsdr_shared ALIAS rtlsdr_shared)
+add_library(rtlsdr::rtlsdr_static ALIAS rtlsdr_static)
 
 ########################################################################
 # link apps settings
