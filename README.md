@@ -11,10 +11,10 @@ Realtek RTL2832U based hardware can be used as a cheap SDR (Software-defined rad
 This device allows transferring the raw I/Q samples to the your PC/laptop/etc via USB.
 
 History:  
-2017-2018: Transferring/Backporting new features from new versions and fixes...  
-2021: Project is now using only cmake build system.  
-Integrated RTL_NFC code from https://github.com/Iskuri/RTLSDR-NFC  
-2022-2023: more fixes, add's, and improvements.
+2017-2018: Backporting features and bug fixes from upstream and newer forks.  
+2021: Fully migrated to the CMake build system.  
+2022-2023: More fixes, add's, and improvements.  
+2023-2026: Driver optimizations, direct sampling improvements, expanded tuner/hardware support, and Modern CMake integration.
 
 ## Dependencies
 ### Linux
@@ -32,7 +32,7 @@ pacman -S cmake libusb
 libusb [libusb/releases](https://github.com/libusb/libusb/releases)  
 [pthread-win32 library](https://github.com/GerHobbelt/pthread-win32)  
 Latest [CMake](https://cmake.org/download/) or [Old CMake](https://github.com/Kitware/CMake/releases/tag/v3.13.4) for 2003/XP  
-Recommented for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
+Recommended for use: [Precompiled static libs (build kit)](https://github.com/Mr-Precise/SDR-binary-builds-stuff/releases/tag/windows)
 
 ### macOS
 ```
@@ -72,7 +72,7 @@ or build using cmake:
 cmake --build . --config Release
 ```
 
-## install
+## Install
 setup into prefix, usually will require `sudo`:
 ```
 sudo make install
@@ -94,7 +94,7 @@ make install DESTDIR=build_folder_name
 [GitHub Actions](https://github.com/Mr-Precise/rtl-sdr/actions) builds - for Linux amd64 and macOS.  
 [Nightly releases](https://github.com/Mr-Precise/rtl-sdr/releases/tag/nightly) builds - for Linux, macOS, Windows: MSVC and MinGW cross-builds.
 
-# Supportled Software List
+# Supported Software List
 - [Gqrx](https://github.com/gqrx-sdr/gqrx)
 - [SDR++](https://github.com/AlexandreRouma/SDRPlusPlus)
 - [GNU Radio](https://github.com/gnuradio/gnuradio)
