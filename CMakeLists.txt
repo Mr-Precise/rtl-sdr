@@ -60,7 +60,7 @@ include(CpackPacking)
 ########################################################################
 # Compiler specific setup
 ########################################################################
-if(CMAKE_COMPILER_IS_GNUCC AND NOT WIN32)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
     add_definitions(-Wall)
     add_definitions(-Wextra)
     add_definitions(-Wno-unused-parameter)
@@ -69,7 +69,7 @@ if(CMAKE_COMPILER_IS_GNUCC AND NOT WIN32)
     add_definitions(-Wdeclaration-after-statement)
     #http://gcc.gnu.org/wiki/Visibility
     add_definitions(-fvisibility=hidden)
-elseif(MSVC14 OR MSVC14)
+elseif(MSVC AND NOT (MSVC_VERSION LESS 1900))
 #pthread-w32 issue, timespec is now part of time.h
     add_definitions(-D_TIMESPEC_DEFINED)
 endif()

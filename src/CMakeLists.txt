@@ -75,7 +75,6 @@ set_target_properties(rtlsdr_shared PROPERTIES OUTPUT_NAME rtlsdr)
 # Very crutch fix for compatibility with 0.x.x versions
 set_target_properties(rtlsdr_shared PROPERTIES SOVERSION "0")
 set_target_properties(rtlsdr_shared PROPERTIES VERSION ${LIBVER})
-generate_export_header(rtlsdr_shared)
 
 ########################################################################
 # Setup static library variant
@@ -101,7 +100,6 @@ if(NOT WIN32)
   # Force same library filename for static and shared variants of the library
   set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
 endif()
-generate_export_header(rtlsdr_static)
 
 add_library(rtlsdr::rtlsdr ALIAS rtlsdr_shared)
 add_library(rtlsdr::rtlsdr_shared ALIAS rtlsdr_shared)
@@ -241,6 +239,8 @@ set(INSTALL_TARGETS_UTILS rtl_sdr rtl_tcp rtl_test rtl_fm rtl_ir rtl_eeprom rtl_
 
 install(TARGETS rtlsdr_shared EXPORT RTLSDR-export
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # .so/.dylib file
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # import lib
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # runtime
 )
 if(INSTALL_STATIC_LIB)
   install(TARGETS rtlsdr_static EXPORT RTLSDR-export
