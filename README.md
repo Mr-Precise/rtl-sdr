@@ -114,41 +114,44 @@ make install DESTDIR=build_folder_name
 
 ## Dev documentation:
 ### Connect && use library on your project:
-If using find_package:
+
+#### 1. If using find_package (recommended):
 ```cmake
 find_package(rtlsdr REQUIRED)
 
-target_link_libraries(${PROJECT_NAME}
-    rtlsdr::rtlsdr_static #static library
-    rtlsdr::rtlsdr_shared #shared library
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    rtlsdr::rtlsdr         # Recommended: automatically selects shared or static
+    # rtlsdr::rtlsdr_shared # Or link shared explicitly
+    # rtlsdr::rtlsdr_static # Or link static explicitly
 )
 ```
-If using pkg_check_modules:
+
+*Classic/legacy CMake variables are also supported:*
 ```cmake
-find_package(PkgConfig)
-pkg_check_modules(RTLSDR librtlsdr REQUIRED)
-
+find_package(rtlsdr REQUIRED)
 include_directories(${RTLSDR_INCLUDE_DIRS})
-
-target_link_libraries(${PROJECT_NAME}
-    ${RTLSDR_LIBRARIES}
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${RTLSDR_LIBRARIES})
 ```
-If used as a git submodule:
+
+#### 2. If used as a git submodule:
 ```cmake
 add_subdirectory(rtl-sdr)
-include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/rtl-sdr/src
-)
 
-target_link_libraries(${PROJECT_NAME}
-    rtlsdr_shared
-    rtlsdr_static #for static link
-    convenience_static #only for static link
+# Target names and include directories are fully identical to find_package:
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    rtlsdr::rtlsdr         # (or rtlsdr::rtlsdr_static / rtlsdr::rtlsdr_shared)
 )
+```
+
+#### 3. If using pkg-config (pkg_check_modules):
+```cmake
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(RTLSDR REQUIRED librtlsdr)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${RTLSDR_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${RTLSDR_LIBRARIES})
 ```
 
 ## (old) Notes on the mutability tree (2014/09/29)
 Based on developments by Oliver Jowett from [mutability repo](https://github.com/mutability/rtl-sdr)  
-### See old [README.md](README.old.md) for details
+### See old [README.old.md](README.old.md) for details
