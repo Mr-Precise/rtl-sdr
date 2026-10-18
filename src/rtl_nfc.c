@@ -2,7 +2,7 @@
  * rtl-sdr, turns your Realtek RTL2832 based DVB dongle into a SDR receiver
  * rtl_nfc, simple NFC receiving tool
  * Thanks for Iskuri
- * Rewrited code from https://github.com/Iskuri/RTLSDR-NFC
+ * Rewritten code from https://github.com/Iskuri/RTLSDR-NFC
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,33 +33,27 @@
 #include "rtl-sdr.h"
 #include "convenience/convenience.h"
 
-#define BUFF_SIZE 16*1024*1024
-#define RECEIVE_BUFF_SIZE 16384*8
+#define RECEIVE_BUFF_SIZE (16384 * 8)
 #define MOVING_AVERAGE_MAX 512
 #define READER_BUFFER_MAX_SIZE 512
 
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
-unsigned char* buffData;
-uint32_t buffInc = 0;
-uint32_t movingAverageValue = 0;
-uint16_t movingAverageCount = 0;
-uint16_t currAverage = 0;
-uint16_t movingAverageValues[MOVING_AVERAGE_MAX];
-uint16_t movingAverageBuffInc = 0;
-uint32_t packetInc = 0;
-uint16_t squares[256];
+static uint32_t movingAverageValue = 0;
+static uint16_t movingAverageCount = 0;
+static uint16_t currAverage = 0;
+static uint16_t movingAverageValues[MOVING_AVERAGE_MAX];
+static uint16_t movingAverageBuffInc = 0;
+static uint32_t packetInc = 0;
+static uint16_t squares[256];
+static uint16_t demodAM[RECEIVE_BUFF_SIZE / 2];
 
-void calcCurrMovingAverage(uint16_t val);
-
-void parseAmData(uint16_t* amData, uint32_t len);
-
-int abs8(int x);
-
-void computeSquares();
-
-void buffCallback(unsigned char* buf, uint32_t len, void* ctx);
+static void calcCurrMovingAverage(uint16_t val);
+static void parseAmData(uint16_t* amData, uint32_t len);
+static int abs8(int x);
+static void computeSquares(void);
+static void buffCallback(unsigned char* buf, uint32_t len, void* ctx);
 
 void usage(void)
 {
@@ -72,7 +66,7 @@ void usage(void)
 }
 
 #ifdef _WIN32
-BOOL WINAPI
+static BOOL WINAPI
 sighandler(int signum)
 {
 	if (CTRL_C_EVENT == signum) {
@@ -93,43 +87,36 @@ static void sighandler(int signum)
 }
 #endif
 
-void calcCurrMovingAverage(uint16_t val) {
-	if (movingAverageCount > MOVING_AVERAGE_MAX) {
+static void calcCurrMovingAverage(uint16_t val)
+{
+	if (movingAverageCount >= MOVING_AVERAGE_MAX) {
 		movingAverageValue -= movingAverageValues[movingAverageBuffInc];
 	} else {
 		movingAverageCount++;
 	}
 	movingAverageValues[movingAverageBuffInc] = val;
-
-	movingAverageValue += movingAverageValues[movingAverageBuffInc];
+	movingAverageValue += val;
 
 	movingAverageBuffInc++;
-
 	if (movingAverageBuffInc >= MOVING_AVERAGE_MAX) {
 		movingAverageBuffInc = 0;
 	}
 
-	currAverage = movingAverageValue / movingAverageCount;
+	currAverage = (uint16_t)(movingAverageValue / movingAverageCount);
 }
 
-void parseAmData(uint16_t* amData, uint32_t len) {
+static void parseAmData(uint16_t* amData, uint32_t len)
+{
 	uint16_t currAmData = 0;
 	uint8_t readerThreshold;
-	uint8_t tagThreshold;
-	uint16_t buffAvg = 0;
 	uint32_t i = 0;
-	while (i < (len)) {
+
+	while (i < len) {
 		currAmData = amData[i];
 		calcCurrMovingAverage(currAmData);
 		readerThreshold = (currAmData > (currAverage * 0.25));
-		tagThreshold = i > 0 && (currAmData > (amData[i - 1] * 1.05));
 
-		// handle state
-		if (tagThreshold == 1) {
-			// printf("FOUND THRESH\n");
-		} else if (readerThreshold == 0) {
-			// printf("Got down threshold, trying SOF\n");
-			// escape possible wrong output - make more accurate later
+		if (readerThreshold == 0 && (i + 18) <= len) {
 			uint8_t bits[READER_BUFFER_MAX_SIZE * 8];
 			uint8_t packets[READER_BUFFER_MAX_SIZE];
 			uint8_t parityInc = 0;
@@ -141,21 +128,25 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 			uint32_t j;
 
 			i += 2;
-			memset(packets, 0, READER_BUFFER_MAX_SIZE);
+			memset(packets, 0, sizeof(packets));
 
 			while (done == 0) {
 				uint8_t readerMask = 0x00;
+				int sub;
 
-				// i += 4;
-				int j;
-				for (j = 0; j < 4; j++) {
+				if ((i + 16) > len || bitCount >= sizeof(bits)) {
+					done = 1;
+					break;
+				}
+
+				for (sub = 0; sub < 4; sub++) {
 					readerThreshold = (amData[i] > (currAverage * 0.25));
 					readerMask <<= 1;
 					readerMask |= readerThreshold;
 					i += 4;
 				}
 
-				// process modified miller
+				/* process modified miller */
 				switch (readerMask) {
 				case 0x07:
 					bits[bitCount] = 0;
@@ -176,62 +167,59 @@ void parseAmData(uint16_t* amData, uint32_t len) {
 				}
 
 				bitCount++;
-
 				lastReaderMask = readerMask;
-
-				// printf("Reader output: %02x\n",readerMask);
 			}
 
-			// process bits into packet
+			/* process bits into packet */
 			for (j = 1; j < bitCount; j++) {
 				if (bits[j] == 1) {
 					packets[size] |= (1 << bit);
 				}
 
-				// printf("Bit: %d %01x - %02x\n",j,bits[j],packets[0]);
-
 				parityInc++;
 				bit++;
 
 				if (parityInc >= 8) {
-					j++;
+					j++; /* skip parity bit */
 					size++;
 					parityInc = 0;
 					bit = 0;
+					if (size >= READER_BUFFER_MAX_SIZE) {
+						break;
+					}
 				}
 			}
 
-			if (bitCount >= 7) {
-				int k;
+			/* Include any remaining partial byte (e.g. 7-bit REQA/WUPA short frames) */
+			if (bit > 0 && size < READER_BUFFER_MAX_SIZE) {
+				size++;
+			}
+
+			if (bitCount >= 7 && size > 0) {
+				uint16_t k;
 				printf("%08x %d RD: ", packetInc, currAverage);
 				for (k = 0; k < size; k++) {
 					printf("%02x ", packets[k]);
 				}
 				printf("\n");
-				/*
-				printf("%08x RD(B): ",packetInc);
-				for(int k = 0 ; k < bitCount ; k++) {
-					printf("%01x",bits[k]);
-				}
-				printf("\n");
-				*/
 				packetInc++;
 			}
 		}
 
 		i++;
 	}
-
 }
 
-int abs8(int x) {
+static int abs8(int x)
+{
 	if (x >= 127) {
 		return x - 127;
 	}
 	return 127 - x;
 }
 
-void computeSquares() {
+static void computeSquares(void)
+{
 	int i, j;
 	for (i = 0; i < 256; i++) {
 		j = abs8(i);
@@ -239,14 +227,21 @@ void computeSquares() {
 	}
 }
 
-void buffCallback(unsigned char* buf, uint32_t len, void* ctx) {
-	uint16_t demodAM[RECEIVE_BUFF_SIZE];
+static void buffCallback(unsigned char* buf, uint32_t len, void* ctx)
+{
+	uint32_t am_len = len / 2;
 	uint32_t i;
-	for (i = 0; i < len; i += 2) {
-		demodAM[i / 2] = squares[buf[i]] + squares[buf[i + 1]];
+	(void)ctx;
+
+	if (am_len > RECEIVE_BUFF_SIZE / 2) {
+		am_len = RECEIVE_BUFF_SIZE / 2;
 	}
 
-	parseAmData(demodAM, len / 2);
+	for (i = 0; i < am_len; i++) {
+		demodAM[i] = squares[buf[i * 2]] + squares[buf[i * 2 + 1]];
+	}
+
+	parseAmData(demodAM, am_len);
 }
 
 int main(int argc, char** argv)
@@ -259,9 +254,8 @@ int main(int argc, char** argv)
 	int r, opt;
 	int gainCount;
 	int allGains[100];
-	uint16_t* amData;
 
-	memset(movingAverageValues, 0x00, MOVING_AVERAGE_MAX * sizeof(uint16_t));
+	memset(movingAverageValues, 0x00, sizeof(movingAverageValues));
 
 	while ((opt = getopt(argc, argv, "d:hv?")) != -1) {
 		switch (opt) {
@@ -272,7 +266,6 @@ int main(int argc, char** argv)
 		case 'v':
 			printf("librtlsdr version: %s\n", librtlsdr_get_version());
 			return 0;
-			break;
 		case 'h':
 		default:
 			usage();
@@ -302,18 +295,20 @@ int main(int argc, char** argv)
 	sigaction(SIGQUIT, &sigact, NULL);
 	sigaction(SIGPIPE, &sigact, NULL);
 #else
-	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)sighandler, TRUE);
 #endif
 	computeSquares();
 
-	buffData = malloc(BUFF_SIZE);
-
 	gainCount = rtlsdr_get_tuner_gains(dev, allGains);
-	rtlsdr_set_tuner_gain(dev, allGains[gainCount - 1]);
+	if (gainCount > 0) {
+		rtlsdr_set_tuner_gain_mode(dev, 1);
+		rtlsdr_set_tuner_gain(dev, allGains[gainCount - 1]);
+	} else {
+		rtlsdr_set_tuner_gain_mode(dev, 0);
+	}
 
-	rtlsdr_set_center_freq(dev, 27.12e6);
-
-	rtlsdr_set_sample_rate(dev, 1.695e6);
+	rtlsdr_set_center_freq(dev, 27120000);
+	rtlsdr_set_sample_rate(dev, 1695000);
 
 	rtlsdr_reset_buffer(dev);
 
@@ -322,10 +317,7 @@ int main(int argc, char** argv)
 		RECEIVE_BUFF_SIZE
 	);
 
-	// while (1);
-exit:
 	rtlsdr_close(dev);
-	free(buffData);
 
 	return r >= 0 ? r : -r;
 }
