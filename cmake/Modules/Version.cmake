@@ -32,15 +32,19 @@ set(PATCH_VERSION ${VERSION_INFO_PATCH_VERSION})
 ########################################################################
 find_package(Git QUIET)
 
-if(GIT_FOUND)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     message(STATUS "Extracting version information from git describe...")
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
         OUTPUT_VARIABLE GIT_DESCRIBE OUTPUT_STRIP_TRAILING_WHITESPACE
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        RESULT_VARIABLE GIT_RES
     )
+    if(NOT GIT_RES EQUAL 0 OR "${GIT_DESCRIBE}" STREQUAL "")
+        set(GIT_DESCRIBE "release")
+    endif()
 else()
-    set(GIT_DESCRIBE "v${MAJOR_VERSION}.${MINOR_VERSION}.x-xxx-xunknown")
+    set(GIT_DESCRIBE "release")
 endif()
 
 ########################################################################
