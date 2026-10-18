@@ -395,6 +395,7 @@ int main(int argc, char **argv)
 	uint32_t buf_num = 0;
 	int dev_index = 0;
 	int dev_given = 0;
+	int freq_given = 0;
 	int gain = 0;
 	int ppm_error = 0;
 	int direct_sampling = 0;
@@ -423,6 +424,7 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			frequency = (uint32_t)atofs(optarg);
+			freq_given = 1;
 			break;
 		case 'g':
 			gain = (int)(atof(optarg) * 10); /* tenths of a dB */
@@ -492,9 +494,12 @@ int main(int argc, char **argv)
 #endif
 
 	/* Set direct sampling */
-    if (direct_sampling) {
-        verbose_direct_sampling(dev, direct_sampling);
-    }
+	if (direct_sampling) {
+		verbose_direct_sampling(dev, direct_sampling);
+		if (!freq_given) {
+			frequency = 0;
+		}
+	}
 
 	/* Set the tuner error */
 	verbose_ppm_set(dev, ppm_error);
@@ -511,23 +516,25 @@ int main(int argc, char **argv)
 	else
 		fprintf(stderr, "Tuned to %i Hz.\n", frequency);
 
-	if (0 == gain) {
-		 /* Enable automatic gain */
-		r = rtlsdr_set_tuner_gain_mode(dev, 0);
-		if (r < 0)
-			fprintf(stderr, "WARNING: Failed to enable automatic gain.\n");
-	} else {
-		/* Enable manual gain */
-		r = rtlsdr_set_tuner_gain_mode(dev, 1);
-		if (r < 0)
-			fprintf(stderr, "WARNING: Failed to enable manual gain.\n");
+	if (!direct_sampling) {
+		if (0 == gain) {
+			 /* Enable automatic gain */
+			r = rtlsdr_set_tuner_gain_mode(dev, 0);
+			if (r < 0)
+				fprintf(stderr, "WARNING: Failed to enable automatic gain.\n");
+		} else {
+			/* Enable manual gain */
+			r = rtlsdr_set_tuner_gain_mode(dev, 1);
+			if (r < 0)
+				fprintf(stderr, "WARNING: Failed to enable manual gain.\n");
 
-		/* Set the tuner gain */
-		r = rtlsdr_set_tuner_gain(dev, gain);
-		if (r < 0)
-			fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
-		else
-			fprintf(stderr, "Tuner gain set to %f dB.\n", gain/10.0);
+			/* Set the tuner gain */
+			r = rtlsdr_set_tuner_gain(dev, gain);
+			if (r < 0)
+				fprintf(stderr, "WARNING: Failed to set tuner gain.\n");
+			else
+				fprintf(stderr, "Tuner gain set to %f dB.\n", gain/10.0);
+		}
 	}
 
 	rtlsdr_set_bias_tee(dev, enable_biastee);
