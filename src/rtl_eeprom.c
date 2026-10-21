@@ -99,17 +99,25 @@ int get_string_descriptor(int pos, uint8_t *data, char *str)
 {
 	int len, i, j = 0;
 
+	if (pos < 0 || (pos + 1) >= EEPROM_SIZE) {
+		str[0] = '\0';
+		return -1;
+	}
+
 	len = data[pos];
 
-	if (data[pos + 1] != 0x03)
+	if (len < 2 || (pos + len) > EEPROM_SIZE || data[pos + 1] != 0x03) {
 		fprintf(stderr, "Error: invalid string descriptor!\n");
+		str[0] = '\0';
+		return -1;
+	}
 
-	for (i = 2; i < len; i += 2)
-		str[j++] = data[pos + i];
+	for (i = 2; i < len && (pos + i) < EEPROM_SIZE && j < (MAX_STR_SIZE - 1); i += 2)
+		str[j++] = (char)data[pos + i];
 
-	str[j] = 0x00;
+	str[j] = '\0';
 
-	return pos + i;
+	return pos + len;
 }
 
 int set_string_descriptor(int pos, uint8_t *data, char *str)
@@ -139,6 +147,8 @@ int parse_eeprom_to_conf(rtlsdr_config_t *conf, uint8_t *dat)
 {
 	int pos;
 
+	memset(conf, 0, sizeof(rtlsdr_config_t));
+
 	if ((dat[0] != 0x28) || (dat[1] != 0x32))
 		fprintf(stderr, "Error: invalid RTL2832 EEPROM header!\n");
 
@@ -149,8 +159,10 @@ int parse_eeprom_to_conf(rtlsdr_config_t *conf, uint8_t *dat)
 	conf->enable_ir = (dat[7] & 0x02) ? 1 : 0;
 
 	pos = get_string_descriptor(STR_OFFSET, dat, conf->manufacturer);
-	pos = get_string_descriptor(pos, dat, conf->product);
-	get_string_descriptor(pos, dat, conf->serial);
+	if (pos > 0)
+		pos = get_string_descriptor(pos, dat, conf->product);
+	if (pos > 0)
+		get_string_descriptor(pos, dat, conf->serial);
 
 	return 0;
 }
@@ -428,8 +440,10 @@ int main(int argc, char **argv)
 	if (ir_endpoint != 0)
 		 conf.enable_ir = (ir_endpoint > 0) ? 1 : 0;
 
-	if (!change)
+	if (!change) {
+		r = 0;
 		goto exit;
+	}
 
 	fprintf(stderr, "\nNew configuration:\n");
 
