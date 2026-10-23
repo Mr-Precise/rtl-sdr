@@ -29,6 +29,18 @@ extern "C" {
 
 typedef struct rtlsdr_dev rtlsdr_dev_t;
 
+/*!
+ * Enable or disable recognition of devices with corrupted or blank EEPROMs
+ * (e.g. VID:PID 0000:0000, FFFF:FFFF, etc.), or specify a custom VID:PID
+ * to allow recovering bricked dongles.
+ *
+ * \param enable 1 to enable scanning bad devices, 0 to disable
+ * \param custom_vid custom vendor ID to allow (or 0 if none)
+ * \param custom_pid custom product ID to allow (or 0 if none)
+ * \return 0 on success
+ */
+RTLSDR_API int rtlsdr_allow_bad_devices(int enable, uint16_t custom_vid, uint16_t custom_pid);
+
 RTLSDR_API uint32_t rtlsdr_get_device_count(void);
 
 RTLSDR_API const char* rtlsdr_get_device_name(uint32_t index);

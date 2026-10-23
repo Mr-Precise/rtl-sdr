@@ -71,6 +71,7 @@ void usage(void)
 		"RTL2832 based DVB-T receivers\n\n"
 		"Usage:\n"
 		"\t[-d device_index (default: 0)]\n"
+		"\t[-B allow devices with bad / corrupted EEPROM ID, or -B <vid:pid>]\n"
 		"\t[-m <str> set manufacturer string]\n"
 		"\nUse on your own risk, especially -w, -M and -P!\n"
 		"\t[-M <id> set manufacturer ID (aka vendor ID) in hexadecimal]\n"
@@ -294,12 +295,26 @@ int main(int argc, char **argv)
 	int default_config = 0;
 	int change = 0;
 	int ir_endpoint = 0;
+	int allow_bad = 0;
+	uint16_t custom_vid = 0;
+	uint16_t custom_pid = 0;
 	char ch;
 
-	while ((opt = getopt(argc, argv, "d:m:p:M:P:ns:i:g:w:r:hv?")) != -1) {
+	while ((opt = getopt(argc, argv, "d:m:p:M:P:ns:i:g:w:r:hvB?")) != -1) {
 		switch (opt) {
 		case 'd':
 			dev_index = atoi(optarg);
+			break;
+		case 'B':
+			allow_bad = 1;
+			if (optind < argc && argv[optind][0] != '-') {
+				unsigned int b_vid = 0, b_pid = 0;
+				if (sscanf(argv[optind], "%x:%x", &b_vid, &b_pid) == 2) {
+					custom_vid = (uint16_t)b_vid;
+					custom_pid = (uint16_t)b_pid;
+					optind++;
+				}
+			}
 			break;
 		case 'm':
 			manuf_str = optarg;
@@ -364,9 +379,24 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (allow_bad) {
+		rtlsdr_allow_bad_devices(1, custom_vid, custom_pid);
+		if (custom_vid != 0 || custom_pid != 0)
+			fprintf(stderr, "Scanning for bad/corrupted devices and custom ID [0x%04x:0x%04x]...\n",
+				custom_vid, custom_pid);
+		else
+			fprintf(stderr, "Scanning for bad/corrupted devices...\n");
+	}
+
 	device_count = rtlsdr_get_device_count();
 	if (!device_count) {
 		fprintf(stderr, "No supported devices found.\n");
+		if (allow_bad) {
+#ifdef _WIN32
+			fprintf(stderr, "Note for Windows: if the device has a corrupted VID/PID (e.g. 0000:0000),\n"
+					"ensure the WinUSB driver is assigned to it via Zadig.\n");
+#endif
+		}
 		exit(1);
 	}
 
