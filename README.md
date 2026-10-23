@@ -112,6 +112,23 @@ make install DESTDIR=build_folder_name
 - this allows to use a second RTL dongle for use with DVB in parallel
 - the IDs can be programmed with 'rtl_eeprom -n' or 'rtl_eeprom -g realtek_sdr'  
 
+## Restoring broken devices (Corrupted / Blank EEPROM):
+
+If your dongle is broken or unrecognized due to corrupted EEPROM data or a bad VID:PID (e.g. `0000:0000`, `ffff:ffff`, `0bda:2831`), you can restore it via `rtl_eeprom -B` without opening the case or shorting pins:
+
+```bash
+# Detect dongles with broken or corrupted IDs:
+rtl_eeprom -B
+
+# Restore default Realtek configuration:
+rtl_eeprom -B -g realtek
+
+# Or recover a specific bad VID:PID:
+rtl_eeprom -B 1234:5678 -g realtek
+```
+
+On Windows, if the device has an invalid VID/PID (such as `0000:0000`), it appears as an "Unknown USB Device". Open [Zadig](https://zadig.akeo.ie/) ("Options -> List All Devices") and install the WinUSB driver for it before running `rtl_eeprom -B`.
+
 ## Dev documentation:
 ### Connect && use library on your project:
 

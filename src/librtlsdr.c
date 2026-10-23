@@ -381,6 +381,23 @@ static rtlsdr_dongle_t known_devices[] = {
 	{ 0x1f4d, 0xd803, "PROlectrix DV107669" },
 };
 
+static rtlsdr_dongle_t bad_devices[] = {
+	{ 0x0000, 0x0000, "Corrupted RTL2832U (Zero ID 0000)" },
+	{ 0xffff, 0xffff, "Blank/Erased RTL2832U (FFFF)" },
+	{ 0x0bda, 0x2831, "Misconfigured Realtek (PID 2831)" }
+};
+
+static int bad_devices_enabled = 0;
+static rtlsdr_dongle_t custom_bad_device = { 0, 0, "Custom Bad ID RTL2832U" };
+
+int rtlsdr_allow_bad_devices(int enable, uint16_t custom_vid, uint16_t custom_pid)
+{
+	bad_devices_enabled = enable ? 1 : 0;
+	custom_bad_device.vid = custom_vid;
+	custom_bad_device.pid = custom_pid;
+	return 0;
+}
+
 #define DEFAULT_BUF_NUMBER	15
 #define DEFAULT_BUF_LENGTH	(16 * 32 * 512)
 
@@ -1567,6 +1584,20 @@ static rtlsdr_dongle_t *find_known_device(uint16_t vid, uint16_t pid)
 		if (known_devices[i].vid == vid && known_devices[i].pid == pid) {
 			device = &known_devices[i];
 			break;
+		}
+	}
+
+	if (!device && bad_devices_enabled) {
+		if ((custom_bad_device.vid != 0 || custom_bad_device.pid != 0) &&
+		    custom_bad_device.vid == vid && custom_bad_device.pid == pid) {
+			device = &custom_bad_device;
+		} else {
+			for (i = 0; i < sizeof(bad_devices)/sizeof(rtlsdr_dongle_t); i++ ) {
+				if (bad_devices[i].vid == vid && bad_devices[i].pid == pid) {
+					device = &bad_devices[i];
+					break;
+				}
+			}
 		}
 	}
 
