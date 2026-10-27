@@ -179,16 +179,20 @@ static int ppm_gettime(struct time_generic *tg)
  #ifdef _WIN32
 static int ppm_gettime(struct time_generic *tg)
 {
+	static LARGE_INTEGER frequency;
+	static int freq_initialized = 0;
 	int rv;
 	int64_t frac;
-	if (!tg->init) {
-		QueryPerformanceFrequency(&tg->frequency);
-		tg->init = 1;
+	if (!freq_initialized) {
+		QueryPerformanceFrequency(&frequency);
+		freq_initialized = 1;
 	}
 	rv = QueryPerformanceCounter(&tg->ticks);
-	tg->tv_sec = tg->ticks.QuadPart / tg->frequency.QuadPart;
-	frac = (int64_t)(tg->ticks.QuadPart - (tg->tv_sec * tg->frequency.QuadPart));
-	tg->tv_nsec = (long)(frac * 1000000000L / (int64_t)tg->frequency.QuadPart);
+	if (frequency.QuadPart == 0)
+		return -1;
+	tg->tv_sec = tg->ticks.QuadPart / frequency.QuadPart;
+	frac = (int64_t)(tg->ticks.QuadPart - (tg->tv_sec * frequency.QuadPart));
+	tg->tv_nsec = (long)(frac * 1000000000L / (int64_t)frequency.QuadPart);
 	return !rv;
 }
 #endif
@@ -216,6 +220,7 @@ static void ppm_test(uint32_t len)
 		PPM_INIT_RUN
 	} ppm_init = PPM_INIT_NO;
 
+	memset(&ppm_now, 0, sizeof(ppm_now));
 	ppm_gettime(&ppm_now);
 	
 	if (ppm_init != PPM_INIT_RUN) {
