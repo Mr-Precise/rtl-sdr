@@ -906,13 +906,19 @@ int unmark_shared_buffer(int16_t *buf)
 static void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	int i;
-	struct dongle_state *s = ctx;
-	struct demod_state *d = s->demod_target;
+	struct dongle_state *s;
+	struct demod_state *d;
 
-	if (do_exit) {
-		return;}
-	if (!ctx) {
-		return;}
+	if (do_exit || !ctx) {
+		return;
+	}
+
+	s = (struct dongle_state *)ctx;
+	d = s->demod_target;
+	if (!d) {
+		return;
+	}
+
 	if (s->mute) {
 		for (i=0; i<s->mute; i++) {
 			buf[i] = 127;}
@@ -1249,7 +1255,13 @@ int agc_init(struct demod_state *s)
 	int i;
 	struct agc_state *agc;
 
+	if (!s)
+		return -1;
+
 	agc = malloc(sizeof(struct agc_state));
+	if (!agc)
+		return -1;
+
 	s->agc = agc;
 
 	agc->gain_den = 1<<13;
