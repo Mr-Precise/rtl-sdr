@@ -42,7 +42,8 @@ double atofs(char *s)
 	char last;
 	int len;
 	double suff = 1.0;
-	len = strlen(s);
+	if (!s || (len = strlen(s)) == 0)
+		return 0.0;
 	last = s[len-1];
 	s[len-1] = '\0';
 	switch (last) {
@@ -71,7 +72,8 @@ double atoft(char *s)
 	char last;
 	int len;
 	double suff = 1.0;
-	len = strlen(s);
+	if (!s || (len = strlen(s)) == 0)
+		return 0.0;
 	last = s[len-1];
 	s[len-1] = '\0';
 	switch (last) {
@@ -99,7 +101,8 @@ double atofp(char *s)
 	char last;
 	int len;
 	double suff = 1.0;
-	len = strlen(s);
+	if (!s || (len = strlen(s)) == 0)
+		return 0.0;
 	last = s[len-1];
 	s[len-1] = '\0';
 	switch (last) {
@@ -127,6 +130,9 @@ int nearest_gain(rtlsdr_dev_t *dev, int target_gain)
 		return 0;
 	}
 	gains = (int*)malloc(sizeof(int) * count);
+	if (!gains) {
+		return 0;
+	}
 	count = rtlsdr_get_tuner_gains(dev, gains);
 	nearest = gains[0];
 	for (i=0; i<count; i++) {
@@ -280,6 +286,8 @@ int verbose_device_search(char *s)
 	int i, device_count, device, offset;
 	char *s2;
 	char vendor[256], product[256], serial[256];
+	if (!s)
+		return -1;
 	device_count = rtlsdr_get_device_count();
 	if (!device_count) {
 		fprintf(stderr, "No supported devices found.\n");
