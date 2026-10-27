@@ -156,7 +156,13 @@ void rtlsdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 {
 	if(!do_exit) {
 		struct llist *rpt = (struct llist*)malloc(sizeof(struct llist));
+		if (!rpt)
+			return;
 		rpt->data = (char*)malloc(len);
+		if (!rpt->data) {
+			free(rpt);
+			return;
+		}
 		memcpy(rpt->data, buf, len);
 		rpt->len = len;
 		rpt->next = NULL;
@@ -242,8 +248,14 @@ static void *tcp_worker(void *arg)
 					bytesleft -= bytessent;
 					index += bytessent;
 				}
-				if(bytessent == SOCKET_ERROR || do_exit) {
+				if(bytessent <= 0 || do_exit) {
 						printf("worker socket bye\n");
+						while(curelem != 0) {
+							prev = curelem;
+							curelem = curelem->next;
+							free(prev->data);
+							free(prev);
+						}
 						sighandler(0);
 						pthread_exit(NULL);
 				}
@@ -304,9 +316,14 @@ static void *command_worker(void *arg)
 			r = select(s+1, &readfds, NULL, NULL, &tv);
 			if(r) {
 				received = recv(s, (char*)&cmd+(sizeof(cmd)-left), left, 0);
+				if (received <= 0) {
+					printf("comm recv bye\n");
+					sighandler(0);
+					pthread_exit(NULL);
+				}
 				left -= received;
 			}
-			if(received == SOCKET_ERROR || do_exit) {
+			if(do_exit) {
 				printf("comm recv bye\n");
 				sighandler(0);
 				pthread_exit(NULL);
