@@ -229,6 +229,15 @@ sighandler(int signum)
 	}
 	return FALSE;
 }
+#elif defined(__HAIKU__)
+static void sighandler(int signum)
+{
+	if (do_exit >= 2) {
+		_exit(1);
+	}
+	do_exit++;
+	multi_bail();
+}
 #else
 static void sighandler(int signum)
 {

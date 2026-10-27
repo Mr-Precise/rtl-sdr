@@ -74,6 +74,16 @@ sighandler(int signum)
 	}
 	return FALSE;
 }
+#elif defined(__HAIKU__)
+static void sighandler(int signum)
+{
+	static int force_exit = 0;
+	if (force_exit++) {
+		_exit(1);
+	}
+	do_exit = 1;
+	rtlsdr_cancel_async(dev);
+}
 #else
 static void sighandler(int signum)
 {
