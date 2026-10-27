@@ -2110,6 +2110,10 @@ static void LIBUSB_CALL _libusb_callback(struct libusb_transfer *xfer)
 	rtlsdr_dev_t *dev = (rtlsdr_dev_t *)xfer->user_data;
 
 	if (LIBUSB_TRANSFER_COMPLETED == xfer->status) {
+#ifdef __HAIKU__
+		if (RTLSDR_CANCELING == dev->async_status)
+			return;
+#endif
 		if (dev->cb)
 			dev->cb(xfer->buffer, xfer->actual_length, dev->cb_ctx);
 
@@ -2352,8 +2356,10 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 					/* handle events after canceling
 					 * to allow transfer status to
 					 * propagate */
-#ifdef _WIN32
+#if defined(_WIN32)
 					Sleep(1);
+#elif defined(__HAIKU__)
+					usleep(1000);
 #endif
 					libusb_handle_events_timeout_completed(dev->ctx,
 									       &zerotv, NULL);
@@ -2365,11 +2371,35 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 			}
 
 			if (dev->dev_lost || RTLSDR_INACTIVE == next_status) {
+#ifdef __HAIKU__
+				/* On Haiku, give asynchronous BUSBKit callbacks
+				 * time to settle before freeing buffers */
+				{
+					int pending = 1;
+					int retries = 50; /* max 50ms wait */
+					while (pending && retries-- > 0) {
+						pending = 0;
+						for (i = 0; i < dev->xfer_buf_num; ++i) {
+							if (dev->xfer[i] &&
+							    dev->xfer[i]->status != LIBUSB_TRANSFER_CANCELLED) {
+								pending = 1;
+								break;
+							}
+						}
+						if (pending) {
+							usleep(1000);
+							libusb_handle_events_timeout_completed(dev->ctx,
+											       &zerotv, NULL);
+						}
+					}
+				}
+#else
 				/* handle any events that still need to
 				 * be handled before exiting after we
 				 * just cancelled all transfers */
 				libusb_handle_events_timeout_completed(dev->ctx,
 								       &zerotv, NULL);
+#endif
 				break;
 			}
 		}
