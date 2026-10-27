@@ -497,7 +497,12 @@ enum blocks {
 int rtlsdr_read_array(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_t *array, uint8_t len)
 {
 	int r;
-	uint16_t index = (block << 8);
+	uint16_t index;
+
+	if (!dev || !dev->devh)
+		return -1;
+
+	index = (block << 8);
 	if (block == IRB) index = (SYSB << 8) | 0x01;
 
 	r = libusb_control_transfer(dev->devh, CTRL_IN, 0, addr, index, array, len, CTRL_TIMEOUT);
@@ -511,7 +516,12 @@ int rtlsdr_read_array(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_t *
 int rtlsdr_write_array(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_t *array, uint8_t len)
 {
 	int r;
-	uint16_t index = (block << 8) | 0x10;
+	uint16_t index;
+
+	if (!dev || !dev->devh)
+		return -1;
+
+	index = (block << 8) | 0x10;
 	if (block == IRB) index = (SYSB << 8) | 0x11;
 
 	r = libusb_control_transfer(dev->devh, CTRL_OUT, 0, addr, index, array, len, CTRL_TIMEOUT);
@@ -567,8 +577,13 @@ uint16_t rtlsdr_read_reg(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_
 {
 	int r;
 	unsigned char data[2];
-	uint16_t index = (block << 8);
+	uint16_t index;
 	uint16_t reg;
+
+	if (!dev || !dev->devh)
+		return 0;
+
+	index = (block << 8);
 	if (block == IRB) index = (SYSB << 8) | 0x01;
 
 	r = libusb_control_transfer(dev->devh, CTRL_IN, 0, addr, index, data, len, CTRL_TIMEOUT);
@@ -585,8 +600,12 @@ int rtlsdr_write_reg(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint16_t v
 {
 	int r;
 	unsigned char data[2];
+	uint16_t index;
 
-	uint16_t index = (block << 8) | 0x10;
+	if (!dev || !dev->devh)
+		return -1;
+
+	index = (block << 8) | 0x10;
 	if (block == IRB) index = (SYSB << 8) | 0x11;
 
 	if (len == 1)
@@ -608,9 +627,12 @@ uint16_t rtlsdr_demod_read_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, u
 {
 	int r;
 	unsigned char data[2];
-
 	uint16_t index = page;
 	uint16_t reg;
+
+	if (!dev || !dev->devh)
+		return 0;
+
 	addr = (addr << 8) | 0x20;
 
 	r = libusb_control_transfer(dev->devh, CTRL_IN, 0, addr, index, data, len, CTRL_TIMEOUT);
@@ -628,6 +650,10 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 	int r;
 	unsigned char data[2];
 	uint16_t index = 0x10 | page;
+
+	if (!dev || !dev->devh)
+		return -1;
+
 	addr = (addr << 8) | 0x20;
 
 	if (len == 1)
@@ -759,14 +785,19 @@ int rtlsdr_set_gpio_byte(rtlsdr_dev_t *dev, int val)
 
 void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
+	if (!dev)
+		return;
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
 }
 
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 {
 	uint8_t fir[20];
-
 	int i;
+
+	if (!dev)
+		return -1;
+
 	/* format: int8_t[8] */
 	for (i = 0; i < 8; ++i) {
 		const int val = dev->fir[i];
@@ -783,7 +814,7 @@ int rtlsdr_set_fir(rtlsdr_dev_t *dev)
 			return -1;
 		}
 		fir[8+i*3/2] = val0 >> 4;
-		fir[8+i*3/2+1] = (val0 << 4) | ((val1 >> 8) & 0x0f);
+		fir[8+i*3/2+1] = ((val0 & 0x0fff) << 4) | ((val1 >> 8) & 0x0f);
 		fir[8+i*3/2+2] = val1;
 	}
 
@@ -910,6 +941,10 @@ int rtlsdr_set_sample_freq_correction(rtlsdr_dev_t *dev, int ppm)
 	int r = 0;
 	uint8_t tmp;
 	int16_t offs = ppm * (-1) * TWO_POW(24) / 1000000;
+
+	if (!dev)
+		return -1;
+
 	rtlsdr_set_i2c_repeater(dev, 0);
 
 	tmp = offs & 0xff;
@@ -923,10 +958,11 @@ int rtlsdr_set_sample_freq_correction(rtlsdr_dev_t *dev, int ppm)
 int rtlsdr_set_xtal_freq(rtlsdr_dev_t *dev, uint32_t rtl_freq, uint32_t tuner_freq)
 {
 	int r = 0;
-	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if (!dev)
 		return -1;
+
+	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if (rtl_freq > 0 &&
 		(rtl_freq < MIN_RTL_XTAL_FREQ || rtl_freq > MAX_RTL_XTAL_FREQ))
@@ -1155,10 +1191,11 @@ uint32_t rtlsdr_get_center_freq(rtlsdr_dev_t *dev)
 int rtlsdr_set_freq_correction(rtlsdr_dev_t *dev, int ppm)
 {
 	int r = 0;
-	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if (!dev)
 		return -1;
+
+	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if (dev->corr == ppm)
 		return -2;
@@ -1534,10 +1571,11 @@ int rtlsdr_get_direct_sampling(rtlsdr_dev_t *dev)
 int rtlsdr_set_offset_tuning(rtlsdr_dev_t *dev, int on)
 {
 	int r = 0;
-	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if (!dev)
 		return -1;
+
+	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
 	    (dev->tuner_type == RTLSDR_TUNER_R828D))
@@ -1616,6 +1654,10 @@ uint32_t rtlsdr_get_device_count(void)
 	libusb_init(&ctx);
 
 	cnt = libusb_get_device_list(ctx, &list);
+	if (cnt < 0) {
+		libusb_exit(ctx);
+		return 0;
+	}
 
 	for (i = 0; i < cnt; i++) {
 		libusb_get_device_descriptor(list[i], &dd);
@@ -1644,6 +1686,10 @@ const char *rtlsdr_get_device_name(uint32_t index)
 	libusb_init(&ctx);
 
 	cnt = libusb_get_device_list(ctx, &list);
+	if (cnt < 0) {
+		libusb_exit(ctx);
+		return "";
+	}
 
 	for (i = 0; i < cnt; i++) {
 		libusb_get_device_descriptor(list[i], &dd);
@@ -1681,9 +1727,15 @@ int rtlsdr_get_device_usb_strings(uint32_t index, char *manufact,
 	uint32_t device_count = 0;
 	ssize_t cnt;
 
+	memset(&devt, 0, sizeof(devt));
+
 	libusb_init(&ctx);
 
 	cnt = libusb_get_device_list(ctx, &list);
+	if (cnt < 0) {
+		libusb_exit(ctx);
+		return -1;
+	}
 
 	for (i = 0; i < cnt; i++) {
 		libusb_get_device_descriptor(list[i], &dd);
@@ -1778,6 +1830,10 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	dev->dev_lost = 1;
 
 	cnt = libusb_get_device_list(dev->ctx, &list);
+	if (cnt < 0) {
+		r = -1;
+		goto err;
+	}
 
 	for (i = 0; i < cnt; i++) {
 		device = list[i];
@@ -1795,6 +1851,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	}
 
 	if (!device) {
+		libusb_free_device_list(list, 1);
 		r = -1;
 		goto err;
 	}
@@ -1981,10 +2038,16 @@ err:
 	return r;
 }
 
+static int _rtlsdr_free_async_buffers(rtlsdr_dev_t *dev);
+
 int rtlsdr_close(rtlsdr_dev_t *dev)
 {
 	if (!dev)
 		return -1;
+
+	if (RTLSDR_RUNNING == dev->async_status)
+		rtlsdr_cancel_async(dev);
+
 	rtlsdr_set_i2c_repeater(dev, 0);
 
 	if(!dev->dev_lost) {
@@ -1999,6 +2062,8 @@ int rtlsdr_close(rtlsdr_dev_t *dev)
 
 		rtlsdr_deinit_baseband(dev);
 	}
+
+	_rtlsdr_free_async_buffers(dev);
 
 	libusb_release_interface(dev->devh, 0);
 
@@ -2082,15 +2147,24 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 	if (!dev->xfer) {
 		dev->xfer = malloc(dev->xfer_buf_num *
 				   sizeof(struct libusb_transfer *));
+		if (!dev->xfer)
+			return -ENOMEM;
 
-		for(i = 0; i < dev->xfer_buf_num; ++i)
+		for(i = 0; i < dev->xfer_buf_num; ++i) {
 			dev->xfer[i] = libusb_alloc_transfer(0);
+			if (!dev->xfer[i]) {
+				_rtlsdr_free_async_buffers(dev);
+				return -ENOMEM;
+			}
+		}
 	}
 
 	if (dev->xfer_buf)
 		return -2;
 
 	dev->xfer_buf = malloc(dev->xfer_buf_num * sizeof(unsigned char *));
+	if (!dev->xfer_buf)
+		return -ENOMEM;
 	memset(dev->xfer_buf, 0, dev->xfer_buf_num * sizeof(unsigned char *));
 #if defined(ENABLE_ZEROCOPY) && defined (__linux__) && LIBUSB_API_VERSION >= 0x01000105
 	fprintf(stderr, "Allocating %d zero-copy buffers\n", dev->xfer_buf_num);
@@ -2137,8 +2211,10 @@ static int _rtlsdr_alloc_async_buffers(rtlsdr_dev_t *dev)
 		for (i = 0; i < dev->xfer_buf_num; ++i) {
 			dev->xfer_buf[i] = malloc(dev->xfer_buf_len);
 
-			if (!dev->xfer_buf[i])
+			if (!dev->xfer_buf[i]) {
+				_rtlsdr_free_async_buffers(dev);
 				return -ENOMEM;
+			}
 		}
 	}
 
@@ -2216,7 +2292,11 @@ int rtlsdr_read_async(rtlsdr_dev_t *dev, rtlsdr_read_async_cb_t cb, void *ctx,
 	else
 		dev->xfer_buf_len = DEFAULT_BUF_LENGTH;
 
-	_rtlsdr_alloc_async_buffers(dev);
+	r = _rtlsdr_alloc_async_buffers(dev);
+	if (r < 0) {
+		dev->async_status = RTLSDR_INACTIVE;
+		return r;
+	}
 
 	for(i = 0; i < dev->xfer_buf_num; ++i) {
 		libusb_fill_bulk_transfer(dev->xfer[i],
@@ -2402,7 +2482,12 @@ struct rtl28xxu_reg_val_mask {
 static int rtlsdr_read_regs(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_t *data, uint8_t len)
 {
 	int r;
-	uint16_t index = (block << 8);
+	uint16_t index;
+
+	if (!dev || !dev->devh)
+		return -1;
+
+	index = (block << 8);
 	if (block == IRB) index = (SYSB << 8) | 0x01;
 
 	r = libusb_control_transfer(dev->devh, CTRL_IN, 0, addr, index, data, len, CTRL_TIMEOUT);
@@ -2441,6 +2526,9 @@ int rtlsdr_ir_query(rtlsdr_dev_t *d, uint8_t *buf, size_t buf_len)
 		{IRB, IR_RX_BUF_CTRL,		 0x80, 0xff},
 		{IRB, IR_RX_CTRL,			 0x80, 0xff},
 	};
+
+	if (!d || !buf || buf_len == 0)
+		return -1;
 
 	/* init remote controller */
 	if (!d->rc_active) {
