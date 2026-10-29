@@ -1802,71 +1802,10 @@ const char* librtlsdr_get_version(void)
     return RTL_SDR_VERSION_STRING;
 }
 
-int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
+static int _rtlsdr_init_device(rtlsdr_dev_t **out_dev, rtlsdr_dev_t *dev)
 {
 	int r;
-	int i;
-	libusb_device **list;
-	rtlsdr_dev_t *dev = NULL;
-	libusb_device *device = NULL;
-	uint32_t device_count = 0;
-	struct libusb_device_descriptor dd;
 	uint8_t reg;
-	ssize_t cnt;
-
-	dev = malloc(sizeof(rtlsdr_dev_t));
-	if (NULL == dev)
-		return -ENOMEM;
-
-	memset(dev, 0, sizeof(rtlsdr_dev_t));
-	memcpy(dev->fir, fir_default, sizeof(fir_default));
-
-	libusb_init(&dev->ctx);
-
-	//TODO
-	dev->biast_gpio_pin_no = 0;
-	dev->gpio_state_known = 0;
-	dev->gpio_state = 0;
-	dev->dev_lost = 1;
-
-	cnt = libusb_get_device_list(dev->ctx, &list);
-	if (cnt < 0) {
-		r = -1;
-		goto err;
-	}
-
-	for (i = 0; i < cnt; i++) {
-		device = list[i];
-
-		libusb_get_device_descriptor(list[i], &dd);
-
-		if (find_known_device(dd.idVendor, dd.idProduct)) {
-			device_count++;
-		}
-
-		if (index == device_count - 1)
-			break;
-
-		device = NULL;
-	}
-
-	if (!device) {
-		libusb_free_device_list(list, 1);
-		r = -1;
-		goto err;
-	}
-
-	r = libusb_open(device, &dev->devh);
-	if (r < 0) {
-		libusb_free_device_list(list, 1);
-		fprintf(stderr, "usb_open error %d\n", r);
-		if(r == LIBUSB_ERROR_ACCESS)
-			fprintf(stderr, "Please fix the device permissions, e.g. "
-			"by installing the udev rules file rtl-sdr.rules\n");
-		goto err;
-	}
-
-	libusb_free_device_list(list, 1);
 
 	if (libusb_kernel_driver_active(dev->devh, 0) == 1) {
 		dev->driver_active = 1;
@@ -2036,6 +1975,151 @@ err:
 	}
 
 	return r;
+}
+
+int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
+{
+	int r;
+	int i;
+	libusb_device **list;
+	rtlsdr_dev_t *dev = NULL;
+	libusb_device *device = NULL;
+	uint32_t device_count = 0;
+	struct libusb_device_descriptor dd;
+	ssize_t cnt;
+
+	if (!out_dev)
+		return -EINVAL;
+
+	dev = malloc(sizeof(rtlsdr_dev_t));
+	if (NULL == dev)
+		return -ENOMEM;
+
+	memset(dev, 0, sizeof(rtlsdr_dev_t));
+	memcpy(dev->fir, fir_default, sizeof(fir_default));
+
+	r = libusb_init(&dev->ctx);
+	if (r < 0) {
+		free(dev);
+		return -1;
+	}
+
+	//TODO
+	dev->biast_gpio_pin_no = 0;
+	dev->gpio_state_known = 0;
+	dev->gpio_state = 0;
+	dev->dev_lost = 1;
+
+	cnt = libusb_get_device_list(dev->ctx, &list);
+	if (cnt < 0) {
+		r = -1;
+		goto err;
+	}
+
+	for (i = 0; i < cnt; i++) {
+		device = list[i];
+
+		libusb_get_device_descriptor(list[i], &dd);
+
+		if (find_known_device(dd.idVendor, dd.idProduct)) {
+			device_count++;
+		}
+
+		if (index == device_count - 1)
+			break;
+
+		device = NULL;
+	}
+
+	if (!device) {
+		libusb_free_device_list(list, 1);
+		r = -1;
+		goto err;
+	}
+
+	r = libusb_open(device, &dev->devh);
+	if (r < 0) {
+		libusb_free_device_list(list, 1);
+		fprintf(stderr, "usb_open error %d\n", r);
+		if(r == LIBUSB_ERROR_ACCESS)
+			fprintf(stderr, "Please fix the device permissions, e.g. "
+			"by installing the udev rules file rtl-sdr.rules\n");
+		goto err;
+	}
+
+	libusb_free_device_list(list, 1);
+
+	return _rtlsdr_init_device(out_dev, dev);
+
+err:
+	if (dev) {
+		if (dev->devh)
+			libusb_close(dev->devh);
+		if (dev->ctx)
+			libusb_exit(dev->ctx);
+
+		free(dev);
+	}
+
+	return r;
+}
+
+int rtlsdr_open_sys_dev(rtlsdr_dev_t **out_dev, intptr_t sys_dev)
+{
+#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000102)
+	int r;
+	rtlsdr_dev_t *dev = NULL;
+
+	if (!out_dev)
+		return -EINVAL;
+
+	dev = malloc(sizeof(rtlsdr_dev_t));
+	if (NULL == dev)
+		return -ENOMEM;
+
+	memset(dev, 0, sizeof(rtlsdr_dev_t));
+	memcpy(dev->fir, fir_default, sizeof(fir_default));
+
+#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000106)
+#if defined(LIBUSB_OPTION_NO_DEVICE_DISCOVERY)
+	libusb_set_option(NULL, LIBUSB_OPTION_NO_DEVICE_DISCOVERY);
+#elif defined(LIBUSB_OPTION_WEAK_AUTHORITY)
+	libusb_set_option(NULL, LIBUSB_OPTION_WEAK_AUTHORITY);
+#endif
+#endif
+
+	r = libusb_init(&dev->ctx);
+	if (r < 0) {
+		free(dev);
+		return -1;
+	}
+
+	//TODO
+	dev->biast_gpio_pin_no = 0;
+	dev->gpio_state_known = 0;
+	dev->gpio_state = 0;
+	dev->dev_lost = 1;
+
+	r = libusb_wrap_sys_device(dev->ctx, sys_dev, &dev->devh);
+	if (r < 0 || dev->devh == NULL) {
+		fprintf(stderr, "usb_wrap_sys_device error %d\n", r);
+		libusb_exit(dev->ctx);
+		free(dev);
+		return -1;
+	}
+
+	return _rtlsdr_init_device(out_dev, dev);
+#else
+	(void)out_dev;
+	(void)sys_dev;
+	fprintf(stderr, "libusb_wrap_sys_device is not supported by installed libusb version\n");
+	return -1;
+#endif
+}
+
+int rtlsdr_open_fd(rtlsdr_dev_t **out_dev, int fd)
+{
+	return rtlsdr_open_sys_dev(out_dev, (intptr_t)fd);
 }
 
 static int _rtlsdr_free_async_buffers(rtlsdr_dev_t *dev);

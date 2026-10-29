@@ -74,6 +74,24 @@ RTLSDR_API int rtlsdr_get_index_by_serial(const char *serial);
 
 RTLSDR_API int rtlsdr_open(rtlsdr_dev_t **dev, uint32_t index);
 
+/*!
+ * Open RTL-SDR device using an existing system device handle (e.g. from Android UsbDeviceConnection).
+ *
+ * \param dev pointer to the device handle storage
+ * \param sys_dev system device handle (file descriptor on Android/Linux)
+ * \return 0 on success
+ */
+RTLSDR_API int rtlsdr_open_sys_dev(rtlsdr_dev_t **dev, intptr_t sys_dev);
+
+/*!
+ * Open RTL-SDR device using an existing file descriptor (wrapper for rtlsdr_open_sys_dev).
+ *
+ * \param dev pointer to the device handle storage
+ * \param fd open file descriptor of the USB device
+ * \return 0 on success
+ */
+RTLSDR_API int rtlsdr_open_fd(rtlsdr_dev_t **dev, int fd);
+
 RTLSDR_API int rtlsdr_close(rtlsdr_dev_t *dev);
 
 /* configuration functions */
