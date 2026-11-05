@@ -135,8 +135,7 @@ jobs:
           mv rtl-sdr_build_ubuntu_22.04-amd64.tar.gz rtl-sdr_all/ && 
           mv macos_latest_build/rtl-sdr_build_macos-latest.tar.gz rtl-sdr_all/ && 
           mv macos_14_build/rtl-sdr_build_macos_14.tar.gz rtl-sdr_all/ && 
-          7z a rtl-sdr_build_VS2022_Win64.zip -r windows_2022_build && 
-          mv rtl-sdr_build_VS2022_Win64.zip rtl-sdr_all/
+          mv windows_2022_build/* rtl-sdr_all/
 
       - uses: actions/upload-artifact@v4
         with:
