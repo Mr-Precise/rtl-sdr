@@ -1,8 +1,8 @@
 rtl-sdr turns your Realtek RTL2832 based DVB dongle into a SDR receiver
 ======================================================================
 Discord support server:  
-[![Join Discord server!](https://invidget.switchblade.xyz/HP99wM4yNR)](http://discord.gg/HP99wM4yNR)  
-![GitHub all releases](https://img.shields.io/github/downloads/Mr-Precise/rtl-sdr/total?color=%23477CE0&label=Total%20downloads%3A&style=for-the-badge)  
+[![Discord](https://img.shields.io/discord/903499832721833994?style=for-the-badge&logo=discord&logoColor=white&color=5865F2&label=Discord)](https://discord.gg/HP99wM4yNR)  
+[![Downloads](https://img.shields.io/github/downloads/Mr-Precise/rtl-sdr/total?style=for-the-badge&logo=github&logoColor=white&color=477CE0&label=Downloads)](https://github.com/Mr-Precise/rtl-sdr/releases)
 
 Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.  
 (From my experiments up to 3.4 MHz on R820T2)
