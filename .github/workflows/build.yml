@@ -15,9 +15,11 @@ jobs:
       - name: Install prerequisites
         run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
       - name: run_cmake_build
-        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
+        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make -j2 && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
       - name: Generate debian package
         run: cd build && cpack -G DEB
+      - name: Compress debian package
+        run: cd build/Generated_Packages && tar zcvf rtl-sdr_deb_ubuntu_latest-amd64.tar.gz *.deb && rm -f *.deb
       - name: Compress binaries
         run: tar zcvf rtl-sdr_build_ubuntu_latest-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
       - name: move tar.gz to Generated Packages
@@ -36,9 +38,11 @@ jobs:
       - name: Install prerequisites
         run: sudo apt -qq update && sudo apt -yqq install libusb-1.0-0-dev
       - name: run_cmake_build
-        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
+        run: mkdir build && cmake -DENABLE_ZEROCOPY=ON -DDETACH_KERNEL_DRIVER=ON -DINSTALL_UDEV_RULES=ON --install-prefix=/usr -S . -B build && cd build && make -j2 && make install DESTDIR=`pwd`/rtl-sdr_build_ubuntu-amd64
       - name: Generate debian package
         run: cd build && cpack -G DEB
+      - name: Compress debian package
+        run: cd build/Generated_Packages && tar zcvf rtl-sdr_deb_ubuntu_22.04-amd64.tar.gz *.deb && rm -f *.deb
       - name: Compress binaries
         run: tar zcvf rtl-sdr_build_ubuntu_22.04-amd64.tar.gz --directory=build rtl-sdr_build_ubuntu-amd64
       - name: move tar.gz to Generated Packages
@@ -55,7 +59,7 @@ jobs:
       steps:
       - uses: actions/checkout@v4
       - name: run_cmake_build
-        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make -j2 && make install DESTDIR=`pwd`/rtl-sdr_build_macos
       - name: Compress binaries
         run: tar zcvf rtl-sdr_build_macos-latest.tar.gz --directory=build rtl-sdr_build_macos
       - name: 'Upload Artifact'
@@ -64,20 +68,20 @@ jobs:
           name: macos_latest_build
           path: rtl-sdr_build_macos-latest.tar.gz
 
-    build_macos_14:
-      runs-on: macos-14
+    build_macos_15:
+      runs-on: macos-15
 
       steps:
       - uses: actions/checkout@v4
       - name: run_cmake_build
-        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make && make install DESTDIR=`pwd`/rtl-sdr_build_macos
+        run: mkdir build && cmake -DDETACH_KERNEL_DRIVER=ON -S . -B build && cd build && make -j2 && make install DESTDIR=`pwd`/rtl-sdr_build_macos
       - name: Compress binaries
-        run: tar zcvf rtl-sdr_build_macos_14.tar.gz --directory=build rtl-sdr_build_macos
+        run: tar zcvf rtl-sdr_build_macos_15.tar.gz --directory=build rtl-sdr_build_macos
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: macos_14_build
-          path: rtl-sdr_build_macos_14.tar.gz
+          name: macos_15_build
+          path: rtl-sdr_build_macos_15.tar.gz
 
     build_win_2022_64:
       runs-on: windows-2022
@@ -107,6 +111,9 @@ jobs:
         - name: Generate Windows installer
           working-directory: ${{runner.workspace}}/build
           run: cpack -G NSIS64
+        - name: Compress installer
+          working-directory: ${{runner.workspace}}/build/Generated_Packages
+          run: 7z a -sdel rtl-sdr_installer_VS2022_Win64.zip *.exe
         - name: Compress binaries
           run: 7z a rtl-sdr_build_VS2022_Win64.zip ${{runner.workspace}}/build/rtl-sdr-msvc142-Win64
         - name: move zip to Packages
@@ -118,7 +125,7 @@ jobs:
             path: ${{runner.workspace}}/build/Generated_Packages/
 
     create_archive:
-      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_22_04', 'build_macos_latest', 'build_macos_14', 'build_win_2022_64']
+      needs: ['build_ubuntu_latest-amd64', 'build_ubuntu-amd64_22_04', 'build_macos_latest', 'build_macos_15', 'build_win_2022_64']
       runs-on: ubuntu-latest
 
       steps:
@@ -129,12 +136,10 @@ jobs:
         run: >
           ls && 
           mkdir rtl-sdr_all && 
-          tar zcvf rtl-sdr_build_ubuntu_latest-amd64.tar.gz ubuntu_latest_build && 
-          mv rtl-sdr_build_ubuntu_latest-amd64.tar.gz rtl-sdr_all/ && 
-          tar zcvf rtl-sdr_build_ubuntu_22.04-amd64.tar.gz ubuntu_22_04_build && 
-          mv rtl-sdr_build_ubuntu_22.04-amd64.tar.gz rtl-sdr_all/ && 
+          mv ubuntu_latest_build/* rtl-sdr_all/ && 
+          mv ubuntu_22_04_build/* rtl-sdr_all/ && 
           mv macos_latest_build/rtl-sdr_build_macos-latest.tar.gz rtl-sdr_all/ && 
-          mv macos_14_build/rtl-sdr_build_macos_14.tar.gz rtl-sdr_all/ && 
+          mv macos_15_build/rtl-sdr_build_macos_15.tar.gz rtl-sdr_all/ && 
           mv windows_2022_build/* rtl-sdr_all/
 
       - uses: actions/upload-artifact@v4
