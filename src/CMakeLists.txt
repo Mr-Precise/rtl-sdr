@@ -91,7 +91,11 @@ target_include_directories(rtlsdr_static PUBLIC
   $<BUILD_INTERFACE:${THREADS_PTHREADS_INCLUDE_DIR}>
   $<INSTALL_INTERFACE:include>  # <prefix>/include
 )
-set_property(TARGET rtlsdr_static APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
+target_compile_definitions(rtlsdr_static
+  PUBLIC
+    rtlsdr_STATIC
+    RTLSDR_STATIC_DEFINE
+)
 if(NOT WIN32)
   # Force same library filename for static and shared variants of the library
   set_target_properties(rtlsdr_static PROPERTIES OUTPUT_NAME rtlsdr)
@@ -217,16 +221,6 @@ if(WIN32)
   target_link_libraries(rtl_power libgetopt_static)
   target_link_libraries(rtl_biast libgetopt_static)
   target_link_libraries(rtl_nfc libgetopt_static)
-  set_property(TARGET rtl_sdr APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_tcp APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_test APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_fm APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_ir APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_eeprom APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_adsb APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_power APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_biast APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
-  set_property(TARGET rtl_nfc APPEND PROPERTY COMPILE_DEFINITIONS "rtlsdr_STATIC" )
 endif()
 ########################################################################
 # Install built library files & utilities

@@ -35,7 +35,7 @@
 #  define __SDR_IMPORT
 #endif
 
-#ifndef rtlsdr_STATIC
+#if !defined(rtlsdr_STATIC) && !defined(RTLSDR_STATIC_DEFINE)
 #	ifdef rtlsdr_EXPORTS
 #	define RTLSDR_API __SDR_EXPORT
 #	else
