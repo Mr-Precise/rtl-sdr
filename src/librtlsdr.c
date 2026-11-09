@@ -646,16 +646,29 @@ uint16_t rtlsdr_demod_read_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, u
 	return reg;
 }
 
-int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint16_t val, uint8_t len)
+int rtlsdr_demod_write_array(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, const uint8_t *array, uint8_t len)
 {
 	int r;
-	unsigned char data[2];
 	uint16_t index = 0x10 | page;
 
 	if (!dev || !dev->devh)
 		return -1;
 
 	addr = (addr << 8) | 0x20;
+
+	r = libusb_control_transfer(dev->devh, CTRL_OUT, 0, addr, index, (unsigned char *)array, len, CTRL_TIMEOUT);
+
+	if (r < 0)
+		fprintf(stderr, "%s failed with %d\n", __FUNCTION__, r);
+
+	rtlsdr_demod_read_reg(dev, 0x0a, 0x01, 1);
+
+	return (r == len) ? 0 : -1;
+}
+
+int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint16_t val, uint8_t len)
+{
+	unsigned char data[2];
 
 	if (len == 1)
 		data[0] = val & 0xff;
@@ -664,14 +677,7 @@ int rtlsdr_demod_write_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, uint1
 
 	data[1] = val & 0xff;
 
-	r = libusb_control_transfer(dev->devh, CTRL_OUT, 0, addr, index, data, len, CTRL_TIMEOUT);
-
-	if (r < 0)
-		fprintf(stderr, "%s failed with %d\n", __FUNCTION__, r);
-
-	rtlsdr_demod_read_reg(dev, 0x0a, 0x01, 1);
-
-	return (r == len) ? 0 : -1;
+	return rtlsdr_demod_write_array(dev, page, addr, data, len);
 }
 
 /*
@@ -915,7 +921,7 @@ static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_o
 {
 	uint32_t rtl_xtal;
 	int32_t if_freq;
-	uint8_t tmp;
+	uint8_t if_data[3];
 	int r;
 
 	if (!dev)
@@ -932,12 +938,11 @@ static int rtlsdr_set_if_freq(rtlsdr_dev_t *dev, uint32_t freq, uint32_t *freq_o
 		return -2;
 	}
 
-	tmp = (if_freq >> 16) & 0x3f;
-	r = rtlsdr_demod_write_reg(dev, 1, 0x19, tmp, 1);
-	tmp = (if_freq >> 8) & 0xff;
-	r |= rtlsdr_demod_write_reg(dev, 1, 0x1a, tmp, 1);
-	tmp = if_freq & 0xff;
-	r |= rtlsdr_demod_write_reg(dev, 1, 0x1b, tmp, 1);
+	if_data[0] = (if_freq >> 16) & 0x3f;
+	if_data[1] = (if_freq >> 8) & 0xff;
+	if_data[2] = if_freq & 0xff;
+
+	r = rtlsdr_demod_write_array(dev, 1, 0x19, if_data, 3);
 
 	if (freq_out) *freq_out = ((int64_t)if_freq * rtl_xtal * -1 + TWO_POW(21)) / TWO_POW(22);
 

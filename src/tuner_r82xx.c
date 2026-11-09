@@ -1428,6 +1428,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	}
 
 	/* IF filter / image rejection settings */
+	r82xx_write_batch_init(priv);
 
 	if (lo_freq > upconvert_freq) {
 		/* high-side mixing, image negative */
