@@ -584,6 +584,9 @@ uint16_t rtlsdr_read_reg(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_
 	if (!dev || !dev->devh)
 		return 0;
 
+	data[0] = 0;
+	data[1] = 0;
+
 	index = (block << 8);
 	if (block == IRB) index = (SYSB << 8) | 0x01;
 
@@ -592,7 +595,10 @@ uint16_t rtlsdr_read_reg(rtlsdr_dev_t *dev, uint8_t block, uint16_t addr, uint8_
 	if (r < 0)
 		fprintf(stderr, "%s failed with %d\n", __FUNCTION__, r);
 
-	reg = (data[1] << 8) | data[0];
+	if (len == 1)
+		reg = data[0];
+	else
+		reg = (data[1] << 8) | data[0];
 
 	return reg;
 }
@@ -634,6 +640,9 @@ uint16_t rtlsdr_demod_read_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, u
 	if (!dev || !dev->devh)
 		return 0;
 
+	data[0] = 0;
+	data[1] = 0;
+
 	addr = (addr << 8) | 0x20;
 
 	r = libusb_control_transfer(dev->devh, CTRL_IN, 0, addr, index, data, len, CTRL_TIMEOUT);
@@ -641,7 +650,10 @@ uint16_t rtlsdr_demod_read_reg(rtlsdr_dev_t *dev, uint8_t page, uint16_t addr, u
 	if (r < 0)
 		fprintf(stderr, "%s failed with %d\n", __FUNCTION__, r);
 
-	reg = (data[1] << 8) | data[0];
+	if (len == 1)
+		reg = data[0];
+	else
+		reg = (data[1] << 8) | data[0];
 
 	return reg;
 }
