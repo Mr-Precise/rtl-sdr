@@ -263,16 +263,13 @@ int r820t_set_freq(void *dev, uint32_t freq, uint32_t *lo_freq_out) {
 
 int r820t_set_bw(void *dev, int bw) {
 	int r;
-	uint32_t actual_if = 0;
 	rtlsdr_dev_t* devt = (rtlsdr_dev_t*)dev;
-
-	r = r82xx_set_bandwidth(&devt->r82xx_p, bw, devt->rate);
-	if(r < 0)
-		return r;
-	r = rtlsdr_set_if_freq(devt, r, &actual_if);
-	if (r)
-		return r;
-	return rtlsdr_set_center_freq(devt, devt->freq);
+	if (!devt)
+		return -1;
+	rtlsdr_set_i2c_repeater(devt, 1);
+	r = r82xx_set_bw(&devt->r82xx_p, bw > 0 ? (uint32_t)bw : devt->rate);
+	rtlsdr_set_i2c_repeater(devt, 0);
+	return r;
 }
 
 int r820t_set_gain(void *dev, int gain) {
