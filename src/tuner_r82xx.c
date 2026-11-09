@@ -1042,10 +1042,14 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 {
 	int rc;
 
+	priv->manual_gain = set_manual_gain;
+	priv->gain = gain;
+
 	if (set_manual_gain) {
 		int i, total_gain = 0;
 		uint8_t mix_index = 0, lna_index = 0;
 		uint8_t data[4];
+		uint8_t vga_code = 0x08;
 
 		/* LNA auto off */
 		rc = r82xx_write_reg_mask(priv, 0x05, 0x10, 0x10);
@@ -1061,8 +1065,17 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 
-		/* set fixed VGA gain for now (16.3 dB) */
-		rc = r82xx_write_reg_mask(priv, 0x0c, 0x08, 0x9f);
+		if (priv->pll_off) {
+			if (gain >= 450)
+				vga_code = 0x09; /* gentle +3.5 dB boost at max gain */
+			else if (gain <= 100)
+				vga_code = 0x06; /* 9.0 dB at low gain */
+			else
+				vga_code = 0x08; /* 16.3 dB calibrated baseline */
+		}
+
+		/* set VGA gain (16.3 dB default or calibrated in no-mod HF) */
+		rc = r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x9f);
 		if (rc < 0)
 			return rc;
 
@@ -1088,6 +1101,8 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 	} else {
+		uint8_t vga_code = 0x0b;
+
 		/* LNA */
 		rc = r82xx_write_reg_mask(priv, 0x05, 0, 0x10);
 		if (rc < 0)
@@ -1098,8 +1113,11 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 
-		/* set fixed VGA gain for now (26.5 dB) */
-		rc = r82xx_write_reg_mask(priv, 0x0c, 0x0b, 0x9f);
+		if (priv->pll_off)
+			vga_code = 0x0b;
+
+		/* set VGA gain (26.5 dB default) */
+		rc = r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x9f);
 		if (rc < 0)
 			return rc;
 	}
@@ -1199,6 +1217,9 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	uint8_t cable_1_in;
 	uint8_t air_in;
 	int pll_error;
+	uint8_t hpf_code;
+	uint8_t tf_code;
+	uint8_t vga_code;
 	
 	is_rtlsdr_blog_v4 = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4");
 	is_rtlsdr_blog_v4l = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4L");
@@ -1369,6 +1390,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		if (priv->pll_off) {
 			/* Crossed the 14.4MHz boundary, power the VCO back on */
 			rc |= r82xx_write_reg_mask(priv, 0x12, 0x80, 0xe0);
+			rc |= r82xx_write_reg_mask(priv, 0x0c, priv->manual_gain ? 0x08 : 0x0b, 0x0f);
 			priv->pll_off = 0;
 		}
 
@@ -1455,7 +1477,50 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		priv->if_filter_freq = upconvert_freq - lo_freq;
 	}
 
-	update_if_filter(priv);
+	if (priv->pll_off) {
+		/* Smart frequency-dependent HPF corner & tracking filter:
+		 * Avoid letting in low-frequency SMPS / mains noise on higher HF bands.
+		 * Above 5 MHz (40m, 30m, 20m): HPF corner ~3 MHz, TF active on low band
+		 * 2 to 5 MHz (80m band): HPF corner ~1.75 MHz, TF active on low band
+		 * 1 to 2 MHz (Medium Wave / 160m): HPF corner ~700 kHz (0x0b), TF bypassed
+		 * Below 1 MHz (LF / Lower MW / NDB beacons): HPF corner ~250 kHz (0x0f), TF bypassed */
+		if (freq >= MHZ(5.0)) {
+			hpf_code = 0x02; /* -12dB @ 2.25 MHz, clean above 3 MHz */
+			tf_code = 0x02;  /* Tracking filter active on low band to suppress VHF/FM overload */
+		} else if (freq >= MHZ(2.0)) {
+			hpf_code = 0x06; /* -8dB @ 1.75 MHz */
+			tf_code = 0x02;
+		} else if (freq >= MHZ(1.0)) {
+			hpf_code = 0x0b; /* ~700 kHz corner for standard Medium Wave */
+			tf_code = 0x40;  /* Bypass TF for MW */
+		} else {
+			hpf_code = 0x0f; /* Lowest hardware corner (1111, ~250-300 kHz) for sub-1 MHz */
+			tf_code = 0x40;  /* Bypass TF for LF */
+		}
+
+		rc |= r82xx_write_reg_mask(priv, 0x1a, tf_code, 0xc3);
+		if (tf_code == 0x40)
+			rc |= r82xx_write_reg(priv, 0x1b, 0x00);
+		rc |= r82xx_write_reg_mask(priv, 0x0a, 0x10, 0x1f);
+		rc |= r82xx_write_reg_mask(priv, 0x0b, hpf_code, 0xef);
+
+		/* Calibrated IF VGA gain:
+		 * Keep baseline noise floor close to standard 16.3 dB (0x08) so the waterfall
+		 * doesn't blow out, gently compensating AC coupling loss (+3.5 dB) below 1 MHz. */
+		if (priv->manual_gain) {
+			if (priv->gain >= 450)
+				vga_code = (freq < MHZ(1.0)) ? 0x0a : 0x09; /* 19.5-23.0 dB at max slider */
+			else if (priv->gain <= 100)
+				vga_code = 0x06; /* 9.0 dB at low gain */
+			else
+				vga_code = (freq < MHZ(1.0)) ? 0x09 : 0x08; /* 16.3-19.5 dB calibrated baseline */
+		} else {
+			vga_code = 0x0b; /* 26.5 dB baseline for auto-gain */
+		}
+		rc |= r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x0f);
+	} else {
+		update_if_filter(priv);
+	}
 
 	if (priv->reg_batch) {
 		rc |= r82xx_write_batch_sync(priv);
@@ -1642,6 +1707,8 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->pll_low_limit = PLL_INITIAL_LOW;
 	priv->pll_high_limit = PLL_INITIAL_HIGH;
 	priv->pll_off = 0;
+	priv->manual_gain = 0;
+	priv->gain = 0;
 	priv->input = 0;
 
 	priv->init_done = 1;

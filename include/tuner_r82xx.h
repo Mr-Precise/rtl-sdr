@@ -97,6 +97,8 @@ struct r82xx_priv {
 	uint32_t			if_filter_freq;	/* in Hz */
 
 	int pll_off;
+	int manual_gain;
+	int gain;
 
 	/* current PLL limits */
 	uint32_t pll_low_limit;
