@@ -1607,10 +1607,20 @@ int rtlsdr_get_offset_tuning(rtlsdr_dev_t *dev)
 
 int rtlsdr_set_dithering(rtlsdr_dev_t *dev, int dither)
 {
-	if (dev->tuner_type == RTLSDR_TUNER_R820T) {
-		return r82xx_set_dither(&dev->r82xx_p, dither);
+	int r = -1;
+
+	if (!dev)
+		return -1;
+
+	if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
+	    (dev->tuner_type == RTLSDR_TUNER_R828D)) {
+		rtlsdr_set_i2c_repeater(dev, 1);
+		r = r82xx_set_dither(&dev->r82xx_p, dither);
+		rtlsdr_set_i2c_repeater(dev, 0);
+		return r;
 	}
-	return 1;
+
+	return -2;
 }
 
 static rtlsdr_dongle_t *find_known_device(uint16_t vid, uint16_t pid)

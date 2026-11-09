@@ -1477,7 +1477,13 @@ err:
 
 int r82xx_set_dither(struct r82xx_priv *priv, int dither)
 {
+	if (!priv)
+		return -1;
+
 	priv->disable_dither = !dither;
+	if (priv->init_done)
+		return r82xx_write_reg_mask(priv, 0x12, dither ? 0x00 : 0x10, 0x10);
+
 	return 0;
 }
 
