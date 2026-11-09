@@ -928,7 +928,7 @@ static int r82xx_init_tv_standard(struct r82xx_priv *priv,
 }
 
 static int update_if_filter(struct r82xx_priv *priv) {
-	int rc, i, hpf, lpf;
+	int rc, hpf, lpf;
 	uint8_t filt_q, hp_cor;
 	int cal;
 
@@ -989,7 +989,13 @@ static int update_if_filter(struct r82xx_priv *priv) {
 }
 
 int r82xx_set_bw(struct r82xx_priv *priv, uint32_t bw) {
-	priv->bw = bw;
+	if (!priv)
+		return -1;
+	priv->bw = bw ? bw : R82XX_DEFAULT_IF_BW;
+	if (priv->pll_off)
+		return 0;
+	if (priv->if_filter_freq == 0)
+		priv->if_filter_freq = priv->int_freq ? priv->int_freq : R82XX_DEFAULT_IF_FREQ;
 	return update_if_filter(priv);
 }
 
@@ -1124,82 +1130,6 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 
 	return 0;
 }
-
-/* Bandwidth contribution by low-pass filter. */
-static const int r82xx_if_low_pass_bw_table[] = {
-	1700000, 1600000, 1550000, 1450000, 1200000, 900000, 700000, 550000, 450000, 350000
-};
-
-#define FILT_HP_BW1 350000
-#define FILT_HP_BW2 380000
-int r82xx_set_bandwidth(struct r82xx_priv *priv, int bw, uint32_t rate)
-{
-	int rc;
-	unsigned int i;
-	int real_bw = 0;
-	uint8_t reg_0a;
-	uint8_t reg_0b;
-
-	if (bw > 7000000) {
-		// BW: 8 MHz
-		reg_0a = 0x10;
-		reg_0b = 0x0b;
-		priv->int_freq = 4570000;
-	} else if (bw > 6000000) {
-		// BW: 7 MHz
-		reg_0a = 0x10;
-		reg_0b = 0x2a;
-		priv->int_freq = 4570000;
-	} else if (bw > r82xx_if_low_pass_bw_table[0] + FILT_HP_BW1 + FILT_HP_BW2) {
-		// BW: 6 MHz
-		reg_0a = 0x10;
-		reg_0b = 0x6b;
-		priv->int_freq = 3570000;
-	} else {
-		reg_0a = 0x00;
-		reg_0b = 0x80;
-		priv->int_freq = 2300000;
-
-		if (bw > r82xx_if_low_pass_bw_table[0] + FILT_HP_BW1) {
-			bw -= FILT_HP_BW2;
-			priv->int_freq += FILT_HP_BW2;
-			real_bw += FILT_HP_BW2;
-		} else {
-			reg_0b |= 0x20;
-		}
-
-		if (bw > r82xx_if_low_pass_bw_table[0]) {
-			bw -= FILT_HP_BW1;
-			priv->int_freq += FILT_HP_BW1;
-			real_bw += FILT_HP_BW1;
-		} else {
-			reg_0b |= 0x40;
-		}
-
-		// find low-pass filter
-		for(i = 0; i < ARRAY_SIZE(r82xx_if_low_pass_bw_table); ++i) {
-			if (bw > r82xx_if_low_pass_bw_table[i])
-				break;
-		}
-		--i;
-		reg_0b |= 15 - i;
-		real_bw += r82xx_if_low_pass_bw_table[i];
-
-		priv->int_freq -= real_bw / 2;
-	}
-
-	rc = r82xx_write_reg_mask(priv, 0x0a, reg_0a, 0x10);
-	if (rc < 0)
-		return rc;
-
-	rc = r82xx_write_reg_mask(priv, 0x0b, reg_0b, 0xef);
-	if (rc < 0)
-		return rc;
-
-	return priv->int_freq;
-}
-#undef FILT_HP_BW1
-#undef FILT_HP_BW2
 
 int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out)
 {
@@ -1699,6 +1629,7 @@ int r82xx_init(struct r82xx_priv *priv)
 
 	priv->bw = R82XX_DEFAULT_IF_BW;
 	priv->int_freq = R82XX_DEFAULT_IF_FREQ;
+	priv->if_filter_freq = R82XX_DEFAULT_IF_FREQ;
 	/* r82xx_set_bw will always be called by rtlsdr_set_sample_rate,
 	   so there's no need to call r82xx_set_if_filter here */
 
