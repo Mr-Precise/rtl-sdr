@@ -1005,6 +1005,21 @@ static int r82xx_read_gain(struct r82xx_priv *priv)
 	return ((data[3] & 0x0f) << 1) + ((data[3] & 0xf0) >> 4);
 }
 
+int r82xx_get_rf_indicator(struct r82xx_priv *priv)
+{
+	uint8_t data[4];
+	int rc;
+
+	if (!priv)
+		return -1;
+
+	rc = r82xx_read(priv, 0x00, data, sizeof(data));
+	if (rc < 0)
+		return rc;
+
+	return (int)data[3];
+}
+
 /* measured with a Racal 6103E GSM test set at 928 MHz with -60 dBm
  * input power, for raw results see:
  * http://steve-m.de/projects/rtl-sdr/gain_measurement/r820t/

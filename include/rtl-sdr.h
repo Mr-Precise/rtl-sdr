@@ -306,6 +306,24 @@ RTLSDR_API int rtlsdr_set_testmode(rtlsdr_dev_t *dev, int on);
 RTLSDR_API int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on);
 
 /*!
+ * Read the current internal digital AGC gain of the RTL2832.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \return -1 on error, current 8-bit DAGC gain value (linear gain = val / 16.0) on success
+ */
+RTLSDR_API int rtlsdr_get_dagc_gain(rtlsdr_dev_t *dev);
+
+/*!
+ * Get hardware signal strength indicators from RTL2832 demodulator and tuner.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \param rf_level pointer to store RF signal/gain level (-8192 to 8191 or RF power detector), may be NULL
+ * \param if_level pointer to store IF signal/gain level (-8192 to 8191), may be NULL
+ * \return 0 on success, negative on error
+ */
+RTLSDR_API int rtlsdr_get_signal_strength(rtlsdr_dev_t *dev, int *rf_level, int *if_level);
+
+/*!
  * Enable or disable the direct sampling mode. When enabled, the IF mode
  * of the RTL2832 is activated, and rtlsdr_set_center_freq() will control
  * the IF-frequency of the DDC, which can be used to tune from 0 to 28.8 MHz

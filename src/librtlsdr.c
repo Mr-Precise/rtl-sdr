@@ -1493,6 +1493,48 @@ int rtlsdr_set_agc_mode(rtlsdr_dev_t *dev, int on)
 	return rtlsdr_demod_write_reg(dev, 0, 0x19, on ? 0x25 : 0x05, 1);
 }
 
+int rtlsdr_get_dagc_gain(rtlsdr_dev_t *dev)
+{
+	if (!dev)
+		return -1;
+
+	return (int)(rtlsdr_demod_read_reg(dev, 3, 0x05, 1) & 0xff);
+}
+
+int rtlsdr_get_signal_strength(rtlsdr_dev_t *dev, int *rf_level, int *if_level)
+{
+	uint16_t raw;
+
+	if (!dev)
+		return -1;
+
+	if (if_level) {
+		raw = rtlsdr_demod_read_reg(dev, 3, 0x59, 2);
+		/* 14-bit two's complement s(14, 13f) */
+		if (raw & 0x2000)
+			*if_level = (int)(int16_t)((raw & 0x3fff) | 0xc000);
+		else
+			*if_level = (int)(raw & 0x3fff);
+	}
+
+	if (rf_level) {
+		if ((dev->tuner_type == RTLSDR_TUNER_R820T) ||
+		    (dev->tuner_type == RTLSDR_TUNER_R828D)) {
+			rtlsdr_set_i2c_repeater(dev, 1);
+			*rf_level = r82xx_get_rf_indicator(&dev->r82xx_p);
+			rtlsdr_set_i2c_repeater(dev, 0);
+		} else {
+			raw = rtlsdr_demod_read_reg(dev, 3, 0x5b, 2);
+			if (raw & 0x2000)
+				*rf_level = (int)(int16_t)((raw & 0x3fff) | 0xc000);
+			else
+				*rf_level = (int)(raw & 0x3fff);
+		}
+	}
+
+	return 0;
+}
+
 int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 {
 	int r = 0;
