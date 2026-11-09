@@ -130,6 +130,7 @@ struct rtlsdr_dev {
 	int rc_active;
 	int tuner_initialized;
 	int spectrum_inversion;
+	int i2c_repeater_active;
 	char manufact[256];
 	char product[256];
 };
@@ -787,7 +788,12 @@ void rtlsdr_set_i2c_repeater(rtlsdr_dev_t *dev, int on)
 {
 	if (!dev)
 		return;
+
+	if (on != 2 && dev->i2c_repeater_active == (on ? 1 : 0))
+		return;
+
 	rtlsdr_demod_write_reg(dev, 1, 0x01, on ? 0x18 : 0x10, 1);
+	dev->i2c_repeater_active = on ? 1 : 0;
 }
 
 int rtlsdr_set_fir(rtlsdr_dev_t *dev)
@@ -842,6 +848,7 @@ void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
 	/* reset demod (bit 3, soft_rst) */
 	rtlsdr_demod_write_reg(dev, 1, 0x01, 0x14, 1);
 	rtlsdr_demod_write_reg(dev, 1, 0x01, 0x10, 1);
+	dev->i2c_repeater_active = 0;
 
 	/* disable spectrum inversion and adjacent channel rejection */
 	rtlsdr_demod_write_reg(dev, 1, 0x15, 0x00, 1);
@@ -899,6 +906,7 @@ int rtlsdr_deinit_baseband(rtlsdr_dev_t *dev)
 
 	/* poweroff demodulator and ADCs */
 	rtlsdr_write_reg(dev, SYSB, DEMOD_CTL, 0x20, 1);
+	dev->i2c_repeater_active = -1;
 
 	return r;
 }
@@ -1129,6 +1137,7 @@ static int set_spectrum_inversion(rtlsdr_dev_t *dev, int inverted)
 	/* reset demod (bit 3, soft_rst) */
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x01, 0x14, 1);
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x01, 0x10, 1);
+	dev->i2c_repeater_active = 0;
 
 	dev->spectrum_inversion = inverted;
 	return r;
@@ -1432,6 +1441,7 @@ int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 	/* reset demod (bit 3, soft_rst) */
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x01, 0x14, 1);
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x01, 0x10, 1);
+	dev->i2c_repeater_active = 0;
 
 	/* recalculate offset frequency if offset tuning is enabled */
 	if (dev->offs_freq)
@@ -1837,6 +1847,7 @@ int rtlsdr_open(rtlsdr_dev_t **out_dev, uint32_t index)
 	dev->biast_gpio_pin_no = 0;
 	dev->gpio_state_known = 0;
 	dev->gpio_state = 0;
+	dev->i2c_repeater_active = -1;
 	dev->dev_lost = 1;
 
 	cnt = libusb_get_device_list(dev->ctx, &list);
