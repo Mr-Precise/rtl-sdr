@@ -858,6 +858,7 @@ void rtlsdr_init_baseband(rtlsdr_dev_t *dev)
 	rtlsdr_write_reg(dev, USBB, USB_SYSCTL, 0x09, 1);
 	rtlsdr_write_reg(dev, USBB, USB_EPA_MAXPKT, 0x0002, 2);
 	rtlsdr_write_reg(dev, USBB, USB_EPA_CTL, 0x1002, 2);
+	rtlsdr_write_reg(dev, USBB, USB_EPA_FIFO_CFG + 3, 0x00, 1);
 
 	/* poweron demod */
 	rtlsdr_write_reg(dev, SYSB, DEMOD_CTL_1, 0x22, 1);
@@ -2173,8 +2174,17 @@ int rtlsdr_reset_buffer(rtlsdr_dev_t *dev)
 
 	rtlsdr_write_reg(dev, USBB, USB_EPA_CTL, 0x1002, 2);
 	rtlsdr_write_reg(dev, USBB, USB_EPA_CTL, 0x0000, 2);
+	rtlsdr_write_reg(dev, USBB, USB_EPA_FIFO_CFG + 3, 0x00, 1);
 
 	return 0;
+}
+
+int rtlsdr_get_dropped_blocks(rtlsdr_dev_t *dev)
+{
+	if (!dev)
+		return -1;
+
+	return (int)rtlsdr_read_reg(dev, USBB, USB_EPA_FIFO_CFG + 3, 1);
 }
 
 int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read)

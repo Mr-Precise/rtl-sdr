@@ -375,7 +375,25 @@ RTLSDR_API int rtlsdr_set_dithering(rtlsdr_dev_t *dev, int dither);
 
 /* streaming functions */
 
+/*!
+ * Reset device endpoint buffer and hardware drop counter.
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \return 0 on success
+ */
 RTLSDR_API int rtlsdr_reset_buffer(rtlsdr_dev_t *dev);
+
+/*!
+ * Get the number of dropped 188-byte USB FIFO blocks.
+ *
+ * This queries the internal hardware drop counter (BLK_DROP_COUNTER)
+ * in the RTL2832 USB endpoint A FIFO configuration register.
+ * The counter saturates at 255 (0xFF) and is reset to 0 by rtlsdr_reset_buffer().
+ *
+ * \param dev the device handle given by rtlsdr_open()
+ * \return drop count (0-255) on success, negative on error
+ */
+RTLSDR_API int rtlsdr_get_dropped_blocks(rtlsdr_dev_t *dev);
 
 RTLSDR_API int rtlsdr_read_sync(rtlsdr_dev_t *dev, void *buf, int len, int *n_read);
 
