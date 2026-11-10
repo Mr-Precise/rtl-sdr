@@ -4,17 +4,17 @@ Discord support server:
 [![Discord](https://img.shields.io/discord/903499832721833994?style=for-the-badge&logo=discord&logoColor=white&color=5865F2&label=Discord)](https://discord.gg/HP99wM4yNR)  
 [![Downloads](https://img.shields.io/github/downloads/Mr-Precise/rtl-sdr/total?style=for-the-badge&logo=github&logoColor=white&color=477CE0&label=Downloads)](https://github.com/Mr-Precise/rtl-sdr/releases)
 
-Experimental R820T/R820T2 rtl-sdr tuner driver that tunes down to 13 MHz or lower.  
-(From my experiments up to 3.4 MHz on R820T2)
+Experimental R820T/R820T2/R860 rtl-sdr tuner driver that tunes down to ~2 MHz without hardware modifications.
 
 Realtek RTL2832U based hardware can be used as a cheap SDR (Software-defined radio).  
-This device allows transferring the raw I/Q samples to the your PC/laptop/etc via USB.
+This device allows transferring raw I/Q samples to your PC/laptop/etc via USB.
 
 History:  
 2017-2018: Backporting features and bug fixes from upstream and newer forks.  
 2021: Fully migrated to the CMake build system.  
 2022-2023: More fixes, add's, and improvements.  
-2023-2026: Driver optimizations, direct sampling improvements, expanded tuner/hardware support, and Modern CMake integration.
+2023-2026: Driver optimizations, direct sampling improvements, expanded tuner/hardware support, and Modern CMake integration.  
+2026: Fixed-IF LO stabilization, adaptive no-hwmod HF/MF filtering & calibrated gain staging down to ~2 MHz, I2C caching & batch writes, hardware RSSI & drop APIs, and other improvements.
 
 ## Dependencies
 ### Linux
