@@ -441,6 +441,7 @@ int main(int argc, char **argv)
 	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
 	int count;
 	int gains[100];
+	int hw_drops = -1;
 
 	while ((opt = getopt(argc, argv, "d:s:b:tp::Svh")) != -1) {
 		switch (opt) {
@@ -570,11 +571,22 @@ int main(int argc, char **argv)
 	}
 
 	if (do_exit) {
+		hw_drops = rtlsdr_get_dropped_blocks(dev);
 		fprintf(stderr, "\nUser cancel, exiting...\n");
-		fprintf(stderr, "Samples per million lost (minimum): %i\n", (int)(1000000L * dropped_samples / total_samples));
-	}
-	else
+		fprintf(stderr, "Samples per million lost (minimum): %i\n",
+			total_samples ? (int)(1000000L * dropped_samples / total_samples) : 0);
+		if (hw_drops > 0)
+			fprintf(stderr, "Hardware FIFO dropped blocks: %d (188 bytes/block%s)\n",
+				hw_drops, (hw_drops >= 255) ? ", counter saturated at max" : "");
+		else if (hw_drops == 0)
+			fprintf(stderr, "Hardware FIFO dropped blocks: 0 (FIFO intact)\n");
+	} else {
+		hw_drops = rtlsdr_get_dropped_blocks(dev);
 		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
+		if (hw_drops > 0)
+			fprintf(stderr, "Hardware FIFO dropped blocks: %d (188 bytes/block%s)\n",
+				hw_drops, (hw_drops >= 255) ? ", counter saturated at max" : "");
+	}
 
 exit:
 	rtlsdr_close(dev);
