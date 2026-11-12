@@ -14,7 +14,7 @@ History:
 2021: Fully migrated to the CMake build system.  
 2022-2023: More fixes, add's, and improvements.  
 2023-2026: Driver optimizations, direct sampling improvements, expanded tuner/hardware support, and Modern CMake integration.  
-2026: Fixed-IF LO stabilization, adaptive no-hwmod HF/MF filtering & calibrated gain staging down to ~2 MHz, I2C caching & batch writes, hardware RSSI & drop APIs, and other improvements.
+2026: Fixed-IF LO stabilization, adaptive no-hwmod HF/MF filtering & calibrated gain staging down to ~2 MHz, I2C caching & batch writes, hardware RSSI & drop APIs, transparent direct usbfs kernel bridge for Wine (32/64-bit), and other improvements.
 
 ## Dependencies
 ### Linux
@@ -103,6 +103,14 @@ make install DESTDIR=build_folder_name
 - [CubicSDR](https://github.com/cjcliffe/CubicSDR)
 - [HDSDR](https://hdsdr.de/) and other [Winrad](https://www.i2phd.org/winrad/) compatible programs using [ExtIO_RTL](https://github.com/Mr-Precise/ExtIO_RTL)
 - [etc](https://www.rtl-sdr.com/big-list-rtl-sdr-supported-software/)  
+
+## Transparent Wine Support (Linux)
+
+Running Windows SDR software (SDR#, HDSDR with [ExtIO_RTL](https://github.com/Mr-Precise/ExtIO_RTL), SharpSDR, etc.) under Wine has historically failed because Wine does not implement raw WinUSB access.
+
+This library features a built-in direct usbfs kernel bridge (`rtl_wine_usbfs`):
+- **Zero-configuration & driverless:** Windows PE binaries / DLLs (both 32-bit and 64-bit) automatically detect Wine at runtime and communicate directly with the host Linux kernel via `/dev/bus/usb`.
+- **No TCP Franken-bridge:** Works out of the box without resorting to localhost `rtl_tcp` network tunnels, virtual USB-over-IP, or special Wine patches.
 
 ## Setup for SDR only use - without DVB compatibility:
 
