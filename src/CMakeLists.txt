@@ -27,6 +27,10 @@ set(rtlsdr_SOURCES
     tuner_max2112.c
     tuner_r82xx.c)
 
+if(WIN32)
+  list(APPEND rtlsdr_SOURCES rtl_wine_usbfs.c)
+endif()
+
 ########################################################################
 # Set up Windows DLL/EXE resource files
 ########################################################################
