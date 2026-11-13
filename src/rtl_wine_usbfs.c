@@ -188,7 +188,7 @@ static intptr_t linux_syscall(intptr_t nr, intptr_t arg1, intptr_t arg2, intptr_
 }
 #elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_AMD64))
 /* MSVC x64 does not support inline assembly; we execute a small 56-byte thunk */
-static uint8_t s_msvc64_thunk[] = {
+static const uint8_t s_msvc64_thunk_code[] = {
 	0x57,                                                 /* push rdi */
 	0x56,                                                 /* push rsi */
 	0x65, 0x48, 0x8b, 0x04, 0x25, 0x30, 0x00, 0x00, 0x00, /* mov rax, gs:[0x30] (TEB) */
@@ -215,9 +215,14 @@ static intptr_t linux_syscall(intptr_t nr, intptr_t arg1, intptr_t arg2, intptr_
 {
 	if (!s_linux_syscall_msvc64) {
 		DWORD old_protect;
-		if (!VirtualProtect(s_msvc64_thunk, sizeof(s_msvc64_thunk), PAGE_EXECUTE_READWRITE, &old_protect))
+		void *exec_mem = VirtualAlloc(NULL, sizeof(s_msvc64_thunk_code),
+		                              MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		if (!exec_mem)
 			return -1;
-		s_linux_syscall_msvc64 = (linux_syscall_fn_t)(void *)s_msvc64_thunk;
+		memcpy(exec_mem, s_msvc64_thunk_code, sizeof(s_msvc64_thunk_code));
+		VirtualProtect(exec_mem, sizeof(s_msvc64_thunk_code), PAGE_EXECUTE_READ, &old_protect);
+		FlushInstructionCache(GetCurrentProcess(), exec_mem, sizeof(s_msvc64_thunk_code));
+		s_linux_syscall_msvc64 = (linux_syscall_fn_t)exec_mem;
 	}
 	return s_linux_syscall_msvc64(nr, arg1, arg2, arg3);
 }
