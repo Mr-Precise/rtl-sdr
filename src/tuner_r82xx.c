@@ -1044,6 +1044,23 @@ static const int r82xx_mixer_gain_steps[]  = {
 	0, 5, 10, 10, 19, 9, 10, 25, 17, 10, 8, 16, 13, 6, 3, -8
 };
 
+static uint8_t r82xx_get_vga_code(struct r82xx_priv *priv, int manual_gain, int gain)
+{
+	if (!priv->pll_off)
+		return manual_gain ? 0x08 : 0x0b;
+
+	if (manual_gain) {
+		if (gain >= 450)
+			return (priv->freq < MHZ(1.0)) ? 0x0a : 0x09; /* 19.5-23.0 dB at max slider */
+		else if (gain <= 100)
+			return 0x06; /* 9.0 dB at low gain */
+		else
+			return (priv->freq < MHZ(1.0)) ? 0x09 : 0x08; /* 16.3-19.5 dB calibrated baseline */
+	}
+
+	return 0x0b; /* 26.5 dB baseline for auto-gain */
+}
+
 int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 {
 	int rc;
@@ -1055,7 +1072,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		int i, total_gain = 0;
 		uint8_t mix_index = 0, lna_index = 0;
 		uint8_t data[4];
-		uint8_t vga_code = 0x08;
+		uint8_t vga_code;
 
 		/* LNA auto off */
 		rc = r82xx_write_reg_mask(priv, 0x05, 0x10, 0x10);
@@ -1071,14 +1088,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 
-		if (priv->pll_off) {
-			if (gain >= 450)
-				vga_code = 0x09; /* gentle +3.5 dB boost at max gain */
-			else if (gain <= 100)
-				vga_code = 0x06; /* 9.0 dB at low gain */
-			else
-				vga_code = 0x08; /* 16.3 dB calibrated baseline */
-		}
+		vga_code = r82xx_get_vga_code(priv, 1, gain);
 
 		/* set VGA gain (16.3 dB default or calibrated in no-mod HF) */
 		rc = r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x9f);
@@ -1107,7 +1117,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 	} else {
-		uint8_t vga_code = 0x0b;
+		uint8_t vga_code;
 
 		/* LNA */
 		rc = r82xx_write_reg_mask(priv, 0x05, 0, 0x10);
@@ -1119,8 +1129,7 @@ int r82xx_set_gain(struct r82xx_priv *priv, int set_manual_gain, int gain)
 		if (rc < 0)
 			return rc;
 
-		if (priv->pll_off)
-			vga_code = 0x0b;
+		vga_code = r82xx_get_vga_code(priv, 0, 0);
 
 		/* set VGA gain (26.5 dB default) */
 		rc = r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x9f);
@@ -1150,6 +1159,8 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 	uint8_t hpf_code;
 	uint8_t tf_code;
 	uint8_t vga_code;
+
+	priv->freq = freq;
 	
 	is_rtlsdr_blog_v4 = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4");
 	is_rtlsdr_blog_v4l = rtlsdr_check_dongle_model(priv->rtl_dev, "RTLSDRBlog", "Blog V4L");
@@ -1437,16 +1448,7 @@ int r82xx_set_freq(struct r82xx_priv *priv, uint32_t freq, uint32_t *lo_freq_out
 		/* Calibrated IF VGA gain:
 		 * Keep baseline noise floor close to standard 16.3 dB (0x08) so the waterfall
 		 * doesn't blow out, gently compensating AC coupling loss (+3.5 dB) below 1 MHz. */
-		if (priv->manual_gain) {
-			if (priv->gain >= 450)
-				vga_code = (freq < MHZ(1.0)) ? 0x0a : 0x09; /* 19.5-23.0 dB at max slider */
-			else if (priv->gain <= 100)
-				vga_code = 0x06; /* 9.0 dB at low gain */
-			else
-				vga_code = (freq < MHZ(1.0)) ? 0x09 : 0x08; /* 16.3-19.5 dB calibrated baseline */
-		} else {
-			vga_code = 0x0b; /* 26.5 dB baseline for auto-gain */
-		}
+		vga_code = r82xx_get_vga_code(priv, priv->manual_gain, priv->gain);
 		rc |= r82xx_write_reg_mask(priv, 0x0c, vga_code, 0x0f);
 	} else {
 		update_if_filter(priv);
@@ -1638,6 +1640,7 @@ int r82xx_init(struct r82xx_priv *priv)
 	priv->pll_low_limit = PLL_INITIAL_LOW;
 	priv->pll_high_limit = PLL_INITIAL_HIGH;
 	priv->pll_off = 0;
+	priv->freq = 0;
 	priv->manual_gain = 0;
 	priv->gain = 0;
 	priv->input = 0;

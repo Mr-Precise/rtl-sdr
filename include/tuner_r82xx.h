@@ -93,6 +93,7 @@ struct r82xx_priv {
 	uint32_t			delsys;
 	enum r82xx_tuner_type		type;
 
+	uint32_t			freq;	/* in Hz */
 	uint32_t			bw;	/* in MHz */
 	uint32_t			if_filter_freq;	/* in Hz */
 
