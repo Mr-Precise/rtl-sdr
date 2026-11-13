@@ -677,6 +677,7 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 	wine_async_stream_t *stream = NULL;
 	uint32_t i;
 	int r = 0;
+	int in_flight = 0;
 	uint32_t submitted_count = 0;
 
 	if (fd < 0 || !async_status || !async_cancel)
@@ -748,6 +749,7 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 			fprintf(stderr, "wine_usbfs: failed to submit URB %u (error %d)\n", i, r);
 			break;
 		}
+		in_flight++;
 		submitted_count++;
 	}
 
@@ -776,15 +778,16 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 		}
 
 		if (reaped) {
+			in_flight--;
+
 			if (reaped->status == 0 && reaped->actual_length > 0) {
 				if (cb)
 					cb((unsigned char *)reaped->buffer, reaped->actual_length, ctx);
 			} else if (reaped->status < 0) {
-				if (*async_status != 2 || *async_cancel)
-					break;
+				break;
 			}
 
-			if (*async_status == 2 && !*async_cancel) {
+			if (*async_status == 2 && !*async_cancel && reaped->status == 0) {
 				reaped->status = 0;
 				reaped->actual_length = 0;
 				r = linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_SUBMITURB, (intptr_t)reaped);
@@ -792,6 +795,7 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 					fprintf(stderr, "wine_usbfs: failed to resubmit URB (error %d)\n", r);
 					break;
 				}
+				in_flight++;
 			}
 		}
 	}
@@ -800,10 +804,26 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 	*async_status = 1; /* RTLSDR_CANCELING */
 	wine_usbfs_cancel_async(fd);
 
-	/* non-blocking reap until all submitted URBs return */
-	for (i = 0; i < submitted_count; i++) {
-		struct usbdevfs_urb *discarded = NULL;
-		linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_REAPURBNDELAY, (intptr_t)&discarded);
+	/*
+	 * Safely wait for all in-flight USB Request Block to be completed and reaped by the kernel.
+	 * Because USBDEVFS_DISCARDURB unlinks transfers asynchronously, we must not
+	 * free buffer memory while the USB host controller is still releasing it.
+	 */
+	while (in_flight > 0) {
+		struct usbdevfs_urb *reaped = NULL;
+		r = linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_REAPURB, (intptr_t)&reaped);
+		if (r < 0) {
+			if (r == -4 /* -EINTR */)
+				continue;
+			/* If REAPURB fails (e.g. device was unplugged), do non-blocking check */
+			if (linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_REAPURBNDELAY, (intptr_t)&reaped) == 0 && reaped) {
+				in_flight--;
+				continue;
+			}
+			break;
+		}
+		if (reaped)
+			in_flight--;
 	}
 
 	if (stream && stream->fd == fd) {
