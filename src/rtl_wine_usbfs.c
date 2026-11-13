@@ -238,10 +238,15 @@ static wine_usb_device_t s_devices[MAX_WINE_DEVICES];
 static uint32_t s_device_count = 0;
 static int s_scanned = 0;
 
-static volatile int s_async_active = 0;
-static struct usbdevfs_urb *s_active_urbs = NULL;
-static uint32_t s_active_urb_count = 0;
-static int s_active_fd = -1;
+typedef struct wine_async_stream {
+	int in_use;
+	int fd;
+	struct usbdevfs_urb *urbs;
+	uint32_t urb_count;
+	volatile int active;
+} wine_async_stream_t;
+
+static wine_async_stream_t s_streams[MAX_WINE_DEVICES];
 
 /* check if running in wine with access to host usbfs */
 int wine_usbfs_detected(void)
@@ -564,8 +569,21 @@ int wine_usbfs_open(uint32_t index)
 void wine_usbfs_close(int fd)
 {
 	uint32_t iface = 0;
+	int i;
+
 	if (fd < 0)
 		return;
+
+	for (i = 0; i < MAX_WINE_DEVICES; i++) {
+		if (s_streams[i].in_use && s_streams[i].fd == fd) {
+			s_streams[i].active = 0;
+			s_streams[i].urbs = NULL;
+			s_streams[i].urb_count = 0;
+			s_streams[i].in_use = 0;
+			s_streams[i].fd = -1;
+			break;
+		}
+	}
 
 	linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_RELEASEINTERFACE, (intptr_t)&iface);
 	linux_syscall(LINUX_NR_CLOSE, fd, 0, 0);
@@ -633,11 +651,19 @@ int wine_usbfs_bulk_transfer(int fd, unsigned char endpoint,
 int wine_usbfs_cancel_async(int fd)
 {
 	uint32_t i;
-	if (!s_async_active || s_active_fd != fd || !s_active_urbs)
+	if (fd < 0)
 		return 0;
 
-	for (i = 0; i < s_active_urb_count; i++) {
-		linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_DISCARDURB, (intptr_t)&s_active_urbs[i]);
+	for (i = 0; i < MAX_WINE_DEVICES; i++) {
+		if (s_streams[i].in_use && s_streams[i].fd == fd) {
+			if (s_streams[i].active && s_streams[i].urbs) {
+				uint32_t j;
+				for (j = 0; j < s_streams[i].urb_count; j++) {
+					linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_DISCARDURB, (intptr_t)&s_streams[i].urbs[j]);
+				}
+			}
+			return 0;
+		}
 	}
 	return 0;
 }
@@ -648,6 +674,7 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 {
 	unsigned char **buffers;
 	struct usbdevfs_urb *urbs;
+	wine_async_stream_t *stream = NULL;
 	uint32_t i;
 	int r = 0;
 	uint32_t submitted_count = 0;
@@ -657,6 +684,21 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 
 	if (*async_status != 0 /* RTLSDR_INACTIVE */)
 		return -2;
+
+	for (i = 0; i < MAX_WINE_DEVICES; i++) {
+		if (s_streams[i].in_use && s_streams[i].fd == fd)
+			return -2; /* already streaming on this device */
+	}
+	for (i = 0; i < MAX_WINE_DEVICES; i++) {
+		if (!s_streams[i].in_use) {
+			stream = &s_streams[i];
+			stream->in_use = 1;
+			stream->fd = fd;
+			break;
+		}
+	}
+	if (!stream)
+		return -1;
 
 	if (buf_num == 0)
 		buf_num = 15;
@@ -668,6 +710,8 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 	if (!buffers || !urbs) {
 		if (buffers) free(buffers);
 		if (urbs) free(urbs);
+		stream->in_use = 0;
+		stream->fd = -1;
 		return -1;
 	}
 
@@ -678,6 +722,8 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 			for (j = 0; j < i; j++) free(buffers[j]);
 			free(buffers);
 			free(urbs);
+			stream->in_use = 0;
+			stream->fd = -1;
 			return -1;
 		}
 	}
@@ -685,10 +731,9 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 	*async_status = 2; /* RTLSDR_RUNNING */
 	*async_cancel = 0;
 
-	s_active_urbs = urbs;
-	s_active_urb_count = buf_num;
-	s_active_fd = fd;
-	s_async_active = 1;
+	stream->urbs = urbs;
+	stream->urb_count = buf_num;
+	stream->active = 1;
 
 	for (i = 0; i < buf_num; i++) {
 		memset(&urbs[i], 0, sizeof(struct usbdevfs_urb));
@@ -708,7 +753,13 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 
 	if (submitted_count == 0) {
 		*async_status = 0;
-		s_async_active = 0;
+		if (stream && stream->fd == fd) {
+			stream->active = 0;
+			stream->urbs = NULL;
+			stream->urb_count = 0;
+			stream->in_use = 0;
+			stream->fd = -1;
+		}
 		for (i = 0; i < buf_num; i++) free(buffers[i]);
 		free(buffers);
 		free(urbs);
@@ -755,10 +806,13 @@ int wine_usbfs_read_async(int fd, rtlsdr_read_async_cb_t cb, void *ctx,
 		linux_syscall(LINUX_NR_IOCTL, fd, (intptr_t)USBDEVFS_REAPURBNDELAY, (intptr_t)&discarded);
 	}
 
-	s_async_active = 0;
-	s_active_urbs = NULL;
-	s_active_urb_count = 0;
-	s_active_fd = -1;
+	if (stream && stream->fd == fd) {
+		stream->active = 0;
+		stream->urbs = NULL;
+		stream->urb_count = 0;
+		stream->in_use = 0;
+		stream->fd = -1;
+	}
 
 	for (i = 0; i < buf_num; i++) {
 		free(buffers[i]);
