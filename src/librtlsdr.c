@@ -2778,6 +2778,7 @@ int rtlsdr_ir_query(rtlsdr_dev_t *d, uint8_t *buf, size_t buf_len)
 {
 	int ret = -1;
 	size_t i, len;
+	uint8_t rx_if, rx_bc;
 	static const struct rtl28xxu_reg_val_mask refresh_tab[] = {
 		{IRB, IR_RX_IF,			   0x03, 0xff},
 		{IRB, IR_RX_BUF_CTRL,		 0x80, 0xff},
@@ -2789,14 +2790,20 @@ int rtlsdr_ir_query(rtlsdr_dev_t *d, uint8_t *buf, size_t buf_len)
 
 	/* init remote controller */
 	if (!d->rc_active) {
-		/* fprintf(stderr, "initializing remote controller\n"); */
+		/*
+		 * System registers (SYSB) and USB registers (USBB):
+		 * DEMOD_CTL_1: un-gate CIR clock and disable demod IR override.
+		 * USB_CTRL: enable IR clock in USB controller.
+		 * GPD/GPOE/GPO: configure GPIO3 as output and drive HIGH to power IR receiver.
+		 * IRB registers: CIR peripheral settings.
+		 */
 		static const struct rtl28xxu_reg_val_mask init_tab[] = {
-			{USBB, DEMOD_CTL,			 0x00, 0x04},
-			{USBB, DEMOD_CTL,			 0x00, 0x08},
-			{USBB, USB_CTRL,			  0x20, 0x20},
-			{USBB, GPD,				   0x00, 0x08},
-			{USBB, GPOE,				  0x08, 0x08},
-			{USBB, GPO,				   0x08, 0x08},
+			{SYSB, DEMOD_CTL_1,		 0x00, 0x04},
+			{SYSB, DEMOD_CTL_1,		 0x00, 0x08},
+			{USBB, USB_CTRL,		  0x20, 0x20},
+			{SYSB, GPD,			   0x00, 0x08},
+			{SYSB, GPOE,			  0x08, 0x08},
+			{SYSB, GPO,			   0x08, 0x08},
 			{IRB, IR_MAX_DURATION0,	   0xd0, 0xff},
 			{IRB, IR_MAX_DURATION1,	   0x07, 0xff},
 			{IRB, IR_IDLE_LEN0,		   0xc0, 0xff},
@@ -2813,45 +2820,47 @@ int rtlsdr_ir_query(rtlsdr_dev_t *d, uint8_t *buf, size_t buf_len)
 			ret = rtlsdr_write_reg_mask(d, init_tab[i].block, init_tab[i].reg,
 					init_tab[i].val, init_tab[i].mask);
 			if (ret < 0) {
-				fprintf(stderr, "write %ld reg %d %.4x %.2x %.2x failed\n", (unsigned long)i, init_tab[i].block,
+				fprintf(stderr, "write %lu reg %d %.4x %.2x %.2x failed\n", (unsigned long)i, init_tab[i].block,
 						init_tab[i].reg, init_tab[i].val, init_tab[i].mask);
 				goto err;
 			}
 		}
 
 		d->rc_active = 1;
-		/* fprintf(stderr, "rc active\n"); */
 	}
-	/* TODO: option to ir disable */
 
-	buf[0] = rtlsdr_read_reg(d, IRB, IR_RX_IF, 1);
+	rx_if = (uint8_t)rtlsdr_read_reg(d, IRB, IR_RX_IF, 1);
 
-	if (buf[0] != 0x83) {
-		if (buf[0] == 0 || /* no IR signal */
-			/* also observed: 0x82, 0x81 - with lengths 1, 5, 0.. unknown, sometimes occurs at edges
-			   "IR not ready"? causes a -7 timeout if we read */
-			buf[0] == 0x82 || buf[0] == 0x81) {
-			/* graceful exit */
-		} else {
-			fprintf(stderr, "read IR_RX_IF unexpected: %.2x\n", buf[0]);
+	if (rx_if != 0x83) {
+		if (rx_if != 0 && rx_if != 0x82 && rx_if != 0x81) {
+			fprintf(stderr, "read IR_RX_IF unexpected: %.2x\n", rx_if);
 		}
-
-		ret = 0;
-		goto exit;
+		return 0;
 	}
 
-	buf[0] = rtlsdr_read_reg(d, IRB, IR_RX_BC, 1);
+	rx_bc = (uint8_t)rtlsdr_read_reg(d, IRB, IR_RX_BC, 1);
+	len = rx_bc;
 
-	len = buf[0];
-	/* fprintf(stderr, "read IR_RX_BC len=%d\n", len); */
+	if (len == 0) {
+		/* False alarm or empty packet, refresh hardware */
+		for (i = 0; i < ARRAY_SIZE(refresh_tab); i++) {
+			rtlsdr_write_reg_mask(d, refresh_tab[i].block, refresh_tab[i].reg,
+					refresh_tab[i].val, refresh_tab[i].mask);
+		}
+		return 0;
+	}
 
 	if (len > buf_len) {
-		/* fprintf(stderr, "read IR_RX_BC too large for buffer, %lu > %lu\n", buf_len, buf_len); */
-		goto exit;
+		/* Buffer too small: flush hardware FIFO so it doesn't deadlock */
+		for (i = 0; i < ARRAY_SIZE(refresh_tab); i++) {
+			rtlsdr_write_reg_mask(d, refresh_tab[i].block, refresh_tab[i].reg,
+					refresh_tab[i].val, refresh_tab[i].mask);
+		}
+		return -2;
 	}
 
 	/* read raw code from hw */
-	ret = rtlsdr_read_regs(d, IRB, IR_RX_BUF, buf, len);
+	ret = rtlsdr_read_regs(d, IRB, IR_RX_BUF, buf, (uint8_t)len);
 	if (ret < 0)
 		goto err;
 
@@ -2863,13 +2872,10 @@ int rtlsdr_ir_query(rtlsdr_dev_t *d, uint8_t *buf, size_t buf_len)
 			goto err;
 	}
 
-	/* On success return length */
-	ret = len;
+	return (int)len;
 
-exit:
-	return ret;
 err:
-	printf("failed=%d\n", ret);
+	fprintf(stderr, "%s failed: %d\n", __FUNCTION__, ret);
 	return ret;
 }
 
