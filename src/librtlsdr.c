@@ -1585,6 +1585,12 @@ int rtlsdr_set_direct_sampling(rtlsdr_dev_t *dev, int on)
 	if (!dev)
 		return -1;
 
+	if (on < 0 || on > 2) {
+		if (on == 3)
+			return 0;
+		return -EINVAL;
+	}
+
 	if (on == dev->direct_sampling)
 		return 0;
 
