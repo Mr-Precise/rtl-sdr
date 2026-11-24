@@ -90,7 +90,6 @@ sighandler(int signum)
 	if (CTRL_C_EVENT == signum) {
 		fprintf(stderr, "Signal caught, exiting!\n");
 		do_exit = 1;
-		rtlsdr_cancel_async(dongle.dev);
 		return TRUE;
 	}
 	return FALSE;
@@ -103,14 +102,12 @@ static void sighandler(int signum)
 		_exit(1);
 	}
 	do_exit = 1;
-	rtlsdr_cancel_async(dongle.dev);
 }
 #else
 static void sighandler(int signum)
 {
 	fprintf(stderr, "Signal caught, exiting!\n");
 	do_exit = 1;
-	rtlsdr_cancel_async(dongle.dev);
 }
 #endif
 
@@ -122,7 +119,7 @@ int main(int argc, char **argv) {
 	int r, opt;
 	int i, j;
 	int dev_given = 0;
-	unsigned int wait_usec = 100000;
+	unsigned int wait_usec = 10000;
 	int max_count = 0, iteration_count = 0;
 	int output_binary = 0, output_text = 0, output_packed = 0;
 	uint8_t buf[128] = { 0 };
@@ -187,6 +184,11 @@ int main(int argc, char **argv) {
 	if (!output_binary && !output_text && !output_packed)
 		output_binary = 1;
 
+#ifdef _WIN32
+	if (output_packed)
+		_setmode(_fileno(stdout), _O_BINARY);
+#endif
+
 	while (!do_exit) {
 		usleep(wait_usec);
 
@@ -213,21 +215,18 @@ int main(int argc, char **argv) {
 				putchar(buf[i]);
 			}
 		}
-		if (r != 0) printf("\n");
+		if (r != 0 && !output_packed) printf("\n");
 		fflush(stdout);
 
 		if (max_count != 0 && ++iteration_count >= max_count) do_exit = 1;
 	}
 
 	if (do_exit) {
-		fprintf(stderr, "\nUser cancel, exiting...\n");}
-	else {
-		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);}
-
-	rtlsdr_cancel_async(dongle.dev);
+		fprintf(stderr, "\nUser cancel, exiting...\n");
+	} else {
+		fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
+	}
 
 	rtlsdr_close(dongle.dev);
-	return r >= 0 ? r : -r;
-
-	return 0;
+	return (do_exit || r >= 0) ? 0 : 1;
 }
