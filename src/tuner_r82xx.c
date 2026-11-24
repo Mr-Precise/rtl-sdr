@@ -1464,30 +1464,6 @@ err:
 	return rc;
 }
 
-int r82xx_set_nomod(struct r82xx_priv *priv)
-{
-	int rc = -1;
-
-	fprintf(stderr, "Using R820T no-mod direct sampling mode\n");
-
-	/*rc = r82xx_set_bw(priv, 1000000);
-	if (rc < 0)
-		goto err;*/
-
-	/* experimentally determined magic numbers
-	 * needs more experimenting with all the registers */
-	rc = r82xx_set_mux(priv, 300000000);
-	if (rc < 0)
-		goto err;
-
-	r82xx_set_pll(priv, 25000000, NULL);
-
-err:
-	if (rc < 0)
-		fprintf(stderr, "%s: failed=%d\n", __FUNCTION__, rc);
-	return rc;
-}
-
 int r82xx_set_dither(struct r82xx_priv *priv, int dither)
 {
 	if (!priv)

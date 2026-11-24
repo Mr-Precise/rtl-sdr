@@ -185,7 +185,7 @@ void usage(void)
 		"\t[-r max_sample_rate (default: 2.4M)]\n"
 		"\t[-P enables peak hold (default: off/averaging)]\n"
 		"\t[-L enable linear output (default: off/dB)]\n"
-		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q), 3 (no-mod)]\n"
+		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q)]\n"
 		"\t[-O enable offset tuning (default: off)]\n"
 		"\n"
 		"CSV FFT output columns:\n"

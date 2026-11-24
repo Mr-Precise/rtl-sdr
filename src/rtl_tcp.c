@@ -104,7 +104,7 @@ void usage(void)
 	printf("\t[-d device index (default: 0)]\n");
 	printf("\t[-P ppm_error (default: 0)]\n");
 	printf("\t[-T enable bias-T on GPIO PIN 0 (works for rtl-sdr.com v3 dongles)]\n");
-	printf("\t[-D enable direct sampling (default: off) 1 (I), 2 (Q), 3 (no-mod)]\n");
+	printf("\t[-D enable direct sampling (default: off) 1 (I), 2 (Q)]\n");
 	printf("\t[-v show version]\n");
 	exit(1);
 }

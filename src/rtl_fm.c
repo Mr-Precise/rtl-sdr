@@ -227,7 +227,6 @@ void usage(void)
 		"\t    deemp:  enable de-emphasis filter\n"
 		"\t    swagc:  enable software agc (only for AM, broken)\n"
 		"\t    direct: enable direct sampling\n"
-		"\t    no-mod: enable no-mod direct sampling\n"
 		"\t    offset: enable offset tuning\n"
 		"\t    wav:    generate WAV header\n"
 		"\t    pad:    pad output with zeros (broken)\n"
@@ -1392,8 +1391,6 @@ int main(int argc, char **argv)
 				demod.agc_enable = 1;}
 			if (strcmp("direct",  optarg) == 0) {
 				dongle.direct_sampling = 1;}
-			if (strcmp("no-mod",  optarg) == 0) {
-				dongle.direct_sampling = 3;}
 			if (strcmp("offset",  optarg) == 0) {
 				dongle.offset_tuning = 1;}
 			if (strcmp("wav",  optarg) == 0) {

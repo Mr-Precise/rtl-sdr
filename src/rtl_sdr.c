@@ -55,7 +55,7 @@ void usage(void)
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
 		"\t[-n number of samples to read (default: 0, infinite)]\n"
 		"\t[-S force sync output (default: async)]\n"
-		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q), 3 (no-mod)]\n"
+		"\t[-D direct_sampling_mode, 0 (default/off), 1 (I), 2 (Q)]\n"
 		"\t[-N no dithering (default: use dithering)]\n"
 		"\t[-v show version]\n"
 		"\tfilename (a '-' dumps samples to stdout)\n\n");
